@@ -8,80 +8,81 @@ class LetterboxdApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Letterboxd',
+      title: 'Domflix',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF181c23),
         appBarTheme: const AppBarTheme(
-          color: Color(0xFFB71C1C), // Rosso fisso
+          color: Color(0xFFB71C1C),
           elevation: 0,
+          surfaceTintColor: Colors.transparent, // aggiungi questa riga
         ),
       ),
-      home: const LetterboxdHomePage(),
+      home: const DomflixHomePage(),
     );
   }
 }
 
-class LetterboxdHomePage extends StatelessWidget {
-  const LetterboxdHomePage({Key? key}) : super(key: key);
+class DomflixHomePage extends StatelessWidget {
+  const DomflixHomePage({Key? key}) : super(key: key);
 
   static const movies1 = [
     {
       "title": "Mission: Impossible",
-      "image": "https://upload.wikimedia.org/wikipedia/en/2/2d/Mission_Impossible_Fallout_poster.jpg",
+      "image": "https://m.media-amazon.com/images/M/MV5BZGQ5NGEyYTItMjNiMi00Y2EwLTkzOWItMjc5YjJiMjMyNTI0XkEyXkFqcGc@._V1_.jpg",
     },
     {
       "title": "Final Destination",
-      "image": "https://m.media-amazon.com/images/I/81G2QkZ3Z-L._AC_SY679_.jpg",
+      "image": "https://m.media-amazon.com/images/M/MV5BYjZkZDUwNWYtN2QzMy00M2U4LTgyY2QtYjhiMTYxZDcyZmYwXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg",
     },
     {
       "title": "Prom Queen",
-      "image": "https://m.media-amazon.com/images/I/71F5Lh6Y8GL._AC_SY679_.jpg",
+      "image": "https://pad.mymovies.it/filmclub/2025/05/110/locandina.jpg",
     },
   ];
 
   static const movies2 = [
     {
       "title": "Lilo & Stitch",
-      "image": "https://m.media-amazon.com/images/I/81K6ZQfQmPL._AC_SY679_.jpg",
+      "image": "https://pad.mymovies.it/filmclub/2023/02/172/locandina.jpg",
     },
     {
       "title": "Sinners",
-      "image": "https://m.media-amazon.com/images/I/81uL0kDgD-L._AC_SY679_.jpg",
+      "image": "https://m.media-amazon.com/images/M/MV5BNjIwZWY4ZDEtMmIxZS00NDA4LTg4ZGMtMzUwZTYyNzgxMzk5XkEyXkFqcGc@._V1_.jpg",
     },
     {
       "title": "Thunderbolts",
-      "image": "https://m.media-amazon.com/images/I/81fB5bq1rPL._AC_SY679_.jpg",
+      "image": "https://imgc.allpostersimages.com/img/posters/marvel-thunderbolts-2025-teaser-one-sheet_u-l-q1tebjc0.jpg?artHeight=550&artPerspective=y&artWidth=550&background=ffffff",
     },
   ];
 
   static const movies3 = [
     {
       "title": "Friendship",
-      "image": "https://m.media-amazon.com/images/I/81C3mB3p3XL._AC_SY679_.jpg",
+      "image": "https://i.ebayimg.com/images/g/nQQAAOSw3R1nqsAn/s-l400.jpg",
     },
     {
       "title": "Mickey 17",
-      "image": "https://m.media-amazon.com/images/I/81ntqBsN8CL._AC_SY679_.jpg",
+      "image": "https://pad.mymovies.it/filmclub/2023/11/247/locandinapg3.jpg",
     },
     {
       "title": "Mission: Impossible 2",
-      "image": "https://m.media-amazon.com/images/I/81bJZkZ7pIL._AC_SY679_.jpg",
+      "image": "https://m.media-amazon.com/images/I/31zB1f3gHIL._AC_UF894,1000_QL80_.jpg",
     },
   ];
 
   static const movies4 = [
     {
-      "title": "Nuova Serie 1",
-      "image": "https://m.media-amazon.com/images/I/81BESZ4nKPL._AC_SY679_.jpg",
+      "title": "Alessandro Borghese 4 Ristoranti",
+      "image": "https://images.justwatch.com/poster/241301900/s718/alessandro-borghese-4-ristoranti.jpg",
     },
     {
-      "title": "Nuova Serie 2",
-      "image": "https://m.media-amazon.com/images/I/81gTwYAhU7L._AC_SY679_.jpg",
+      "title": "The Last of Us",
+      "image": "https://i.ebayimg.com/images/g/bzwAAOSwhfFknCUl/s-l1200.jpg",
     },
     {
-      "title": "Nuova Serie 3",
-      "image": "https://m.media-amazon.com/images/I/81vpsIs58WL._AC_SY679_.jpg",
+      "title": "Make Cavese Great Again",
+      "image": "https://m.media-amazon.com/images/S/pv-target-images/e581c8d3b7e005fa48542674173fabc0578988fdee6f3b818e43132fe17a489a.png",
     },
   ];
 
@@ -89,15 +90,11 @@ class LetterboxdHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFB71C1C), // Rosso fisso
+        backgroundColor: const Color(0xFFB71C1C),
         elevation: 0,
-        title: const Text(
-          "DomFlix",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1,
-            color: Colors.white,
-          ),
+        title: Image.asset(
+          "assets/domflix_logo.jpeg",
+          height: 38,
         ),
         centerTitle: true,
       ),
@@ -161,10 +158,24 @@ class MovieGrid extends StatelessWidget {
       ),
       itemBuilder: (context, index) {
         final movie = movies[index];
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            color: Colors.grey[900],
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SeriesScreen(
+                  imageUrl: movie["image"]!,
+                  title: movie["title"]!,
+                  trama: "Trama di esempio per ${movie["title"]}", // DA SOSTITUIRE con la trama reale
+                  genere: "Genere di esempio", // DA SOSTITUIRE con il genere reale
+                  stato: "In corso", // DA SOSTITUIRE con lo stato reale
+                  piattaforma: "Netflix", // DA SOSTITUIRE con la piattaforma reale
+                ),
+              ),
+            );
+          },
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
             child: Image.network(
               movie["image"]!,
               fit: BoxFit.cover,
@@ -210,6 +221,77 @@ class CustomFooter extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class SeriesScreen extends StatelessWidget {
+  final String imageUrl;
+  final String title;
+  final String trama;
+  final String genere;
+  final String stato;
+  final String piattaforma;
+
+  const SeriesScreen({
+    Key? key,
+    required this.imageUrl,
+    required this.title,
+    required this.trama,
+    required this.genere,
+    required this.stato,
+    required this.piattaforma,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFB71C1C),
+        title: Text(title),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Image.network(imageUrl),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Trama: $trama",
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Genere: $genere",
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Stato: $stato",
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Piattaforma: $piattaforma",
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
