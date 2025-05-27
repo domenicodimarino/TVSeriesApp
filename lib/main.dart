@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'database_helper.dart'; // db
 
 void main() => runApp(const LetterboxdApp());
 
@@ -126,6 +127,19 @@ class DomflixHomePage extends StatelessWidget {
         ),
       ),
       bottomNavigationBar: const CustomFooter(),
+      //tasto di debug per il database
+      // da togliere nella versione finale
+      // permette di vedere il percorso del database e il contenuto
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          String dbPath = await DatabaseHelper.instance.getDatabasePath();
+          print('Il tuo database si trova in: $dbPath');
+          
+          // Testa anche il contenuto
+          await DatabaseHelper.instance.printAllSeries();
+        },
+        child: const Icon(Icons.storage),
+      ),
     );
   }
 }
@@ -179,6 +193,7 @@ class MovieGrid extends StatelessWidget {
                     genere: "Genere di esempio",
                     stato: "In corso",
                     piattaforma: "Netflix",
+                    isFavorite: false
                   ),
                 ),
               ),

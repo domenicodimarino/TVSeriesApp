@@ -8,6 +8,7 @@ class Series {
   final String genere;
   final String stato;
   final String piattaforma;
+  final bool isFavorite; // Aggiungi questo campo
 
   const Series({
     this.id,
@@ -17,6 +18,7 @@ class Series {
     required this.genere,
     required this.stato,
     required this.piattaforma,
+    this.isFavorite = false, // Default: non preferito
   });
 
   // Conversione per database
@@ -29,6 +31,7 @@ class Series {
       'genere': genere,
       'stato': stato,
       'piattaforma': piattaforma,
+      'isFavorite': isFavorite ? 1 : 0,
     };
   }
 
@@ -41,6 +44,7 @@ class Series {
       genere: map['genere'],
       stato: map['stato'],
       piattaforma: map['piattaforma'],
+      isFavorite: map['isFavorite'] == 1, // Converte 1/0 in bool
     );
   }
 }

@@ -16,6 +16,7 @@ class SeriesScreen extends StatefulWidget {
 
 class _SeriesScreenState extends State<SeriesScreen> {
   late String statoSelezionato;
+  late bool isFavorite; // Aggiungi questa variabile
 
   final List<String> stati = [
     "In corso",
@@ -27,6 +28,29 @@ class _SeriesScreenState extends State<SeriesScreen> {
   void initState() {
     super.initState();
     statoSelezionato = stati.contains(widget.series.stato) ? widget.series.stato : stati[0];
+    isFavorite = widget.series.isFavorite; // Inizializza lo stato preferiti
+  }
+
+  void _toggleFavorite() {
+    setState(() {
+      isFavorite = !isFavorite;
+    });
+    
+    // Qui puoi aggiungere la logica per salvare nel database
+    // DatabaseHelper.updateSeriesFavorite(widget.series.id, isFavorite);
+    
+    // Mostra un messaggio di conferma
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isFavorite 
+            ? '${widget.series.title} aggiunta ai preferiti!' 
+            : '${widget.series.title} rimossa dai preferiti!'
+        ),
+        duration: const Duration(seconds: 2),
+        backgroundColor: isFavorite ? Colors.green : Colors.red,
+      ),
+    );
   }
 
   @override
@@ -64,14 +88,31 @@ class _SeriesScreenState extends State<SeriesScreen> {
                 ),
               ),
               const SizedBox(height: 18),
-              Text(
-                widget.series.title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 26,
-                  color: Colors.white,
-                ),
+              
+              // Titolo con bottone preferiti inline
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.series.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 26,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: isFavorite ? Colors.red : Colors.white70,
+                      size: 32,
+                    ),
+                    onPressed: _toggleFavorite,
+                  ),
+                ],
               ),
+              
               const SizedBox(height: 8),
               Text(
                 "Genere: ${widget.series.genere}",
