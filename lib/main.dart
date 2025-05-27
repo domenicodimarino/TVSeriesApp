@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'series.dart';
+//import db
+import 'dart:async';
+
+import 'package:flutter/widgets.dart';
+import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
 
 void main() => runApp(const LetterboxdApp());
 

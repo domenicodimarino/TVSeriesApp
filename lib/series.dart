@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'main.dart'; // Per riutilizzare CustomFooter
+//import db
+import 'dart:async';
+
+import 'package:flutter/widgets.dart';
+import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
 
 class SeriesScreen extends StatefulWidget {
   final String imageUrl;
