@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'series.dart';
+import 'series_screen.dart'; // Aggiungi questo import
 //import db
 import 'dart:async';
 
@@ -171,12 +172,14 @@ class MovieGrid extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (_) => SeriesScreen(
-                  imageUrl: movie["image"]!,
-                  title: movie["title"]!,
-                  trama: "Trama di esempio per ${movie["title"]}", // DA SOSTITUIRE con la trama reale da db
-                  genere: "Genere di esempio", // DA SOSTITUIRE con il genere reale da db
-                  stato: "In corso", // DA SOSTITUIRE con lo stato reale da db
-                  piattaforma: "Netflix", // DA SOSTITUIRE con la piattaforma reale da db
+                  series: Series(
+                    imageUrl: movie["image"]!,
+                    title: movie["title"]!,
+                    trama: "Trama di esempio per ${movie["title"]}",
+                    genere: "Genere di esempio",
+                    stato: "In corso",
+                    piattaforma: "Netflix",
+                  ),
                 ),
               ),
             );
