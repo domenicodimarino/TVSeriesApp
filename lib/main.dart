@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'series.dart';
 
 void main() => runApp(const LetterboxdApp());
 
@@ -15,7 +16,7 @@ class LetterboxdApp extends StatelessWidget {
         appBarTheme: const AppBarTheme(
           color: Color(0xFFB71C1C),
           elevation: 0,
-          surfaceTintColor: Colors.transparent, // aggiungi questa riga
+          surfaceTintColor: Colors.transparent, // per far in modo che il rosso sia fisso
         ),
       ),
       home: const DomflixHomePage(),
@@ -166,10 +167,10 @@ class MovieGrid extends StatelessWidget {
                 builder: (_) => SeriesScreen(
                   imageUrl: movie["image"]!,
                   title: movie["title"]!,
-                  trama: "Trama di esempio per ${movie["title"]}", // DA SOSTITUIRE con la trama reale
-                  genere: "Genere di esempio", // DA SOSTITUIRE con il genere reale
-                  stato: "In corso", // DA SOSTITUIRE con lo stato reale
-                  piattaforma: "Netflix", // DA SOSTITUIRE con la piattaforma reale
+                  trama: "Trama di esempio per ${movie["title"]}", // DA SOSTITUIRE con la trama reale da db
+                  genere: "Genere di esempio", // DA SOSTITUIRE con il genere reale da db
+                  stato: "In corso", // DA SOSTITUIRE con lo stato reale da db
+                  piattaforma: "Netflix", // DA SOSTITUIRE con la piattaforma reale da db
                 ),
               ),
             );
@@ -221,77 +222,6 @@ class CustomFooter extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class SeriesScreen extends StatelessWidget {
-  final String imageUrl;
-  final String title;
-  final String trama;
-  final String genere;
-  final String stato;
-  final String piattaforma;
-
-  const SeriesScreen({
-    Key? key,
-    required this.imageUrl,
-    required this.title,
-    required this.trama,
-    required this.genere,
-    required this.stato,
-    required this.piattaforma,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFB71C1C),
-        title: Text(title),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Image.network(imageUrl),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Trama: $trama",
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Genere: $genere",
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Stato: $stato",
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Piattaforma: $piattaforma",
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
