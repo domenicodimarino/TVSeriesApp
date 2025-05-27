@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'series.dart';
 import 'series_screen.dart'; // Aggiungi questo import
 //import db
+import 'search_screen.dart';
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
@@ -232,7 +233,13 @@ class CustomFooter extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white, size: 30),
-            onPressed: () {},
+            onPressed: () {
+              // Navigazione alla schermata di ricerca
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SearchScreen()),
+              );
+            },
           ),
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
