@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 import 'series.dart';
-import 'series_screen.dart'; // Aggiungi questo import
-//import db
+import 'series_screen.dart';
 import 'search_screen.dart';
-import 'dart:async';
-
-import 'package:flutter/widgets.dart';
-import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
-import 'database_helper.dart'; // db
+import 'add_edit_series_screen.dart';
+import 'database_helper.dart';
 
 void main() => runApp(const LetterboxdApp());
 
@@ -25,7 +20,7 @@ class LetterboxdApp extends StatelessWidget {
         appBarTheme: const AppBarTheme(
           color: Color(0xFFB71C1C),
           elevation: 0,
-          surfaceTintColor: Colors.transparent, // per far in modo che il rosso sia fisso
+          surfaceTintColor: Colors.transparent,
         ),
       ),
       home: const DomflixHomePage(),
@@ -33,9 +28,14 @@ class LetterboxdApp extends StatelessWidget {
   }
 }
 
-class DomflixHomePage extends StatelessWidget {
+class DomflixHomePage extends StatefulWidget {
   const DomflixHomePage({Key? key}) : super(key: key);
 
+  @override
+  State<DomflixHomePage> createState() => _DomflixHomePageState();
+}
+
+class _DomflixHomePageState extends State<DomflixHomePage> {
   static const movies1 = [
     {
       "title": "Mission: Impossible",
@@ -48,21 +48,6 @@ class DomflixHomePage extends StatelessWidget {
     {
       "title": "Prom Queen",
       "image": "https://pad.mymovies.it/filmclub/2025/05/110/locandina.jpg",
-    },
-  ];
-
-  static const movies2 = [
-    {
-      "title": "Lilo & Stitch",
-      "image": "https://pad.mymovies.it/filmclub/2023/02/172/locandina.jpg",
-    },
-    {
-      "title": "Sinners",
-      "image": "https://m.media-amazon.com/images/M/MV5BNjIwZWY4ZDEtMmIxZS00NDA4LTg4ZGMtMzUwZTYyNzgxMzk5XkEyXkFqcGc@._V1_.jpg",
-    },
-    {
-      "title": "Thunderbolts",
-      "image": "https://imgc.allpostersimages.com/img/posters/marvel-thunderbolts-2025-teaser-one-sheet_u-l-q1tebjc0.jpg?artHeight=550&artPerspective=y&artWidth=550&background=ffffff",
     },
   ];
 
@@ -96,6 +81,14 @@ class DomflixHomePage extends StatelessWidget {
     },
   ];
 
+  Future<List<Series>> _loadUserSeries() async {
+    return await DatabaseHelper.instance.getAllSeries();
+  }
+
+  void _refreshSeries() {
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,34 +106,44 @@ class DomflixHomePage extends StatelessWidget {
         child: ListView(
           children: [
             const SectionTitle(title: "Popular this week"),
-            MovieGrid(movies: movies1),
+            MovieGrid(
+              movies: movies1,
+              onSeriesUpdated: _refreshSeries,
+            ),
             const SizedBox(height: 24),
-            const SectionTitle(title: "Le tue serie in corso"),
-            MovieGrid(movies: movies2),
+            const SectionTitle(title: "Le tue serie"),
+            FutureBuilder<List<Series>>(
+              future: _loadUserSeries(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError || !snapshot.hasData) {
+                  return const Text("Errore nel caricamento delle serie");
+                }
+                return MovieGridDynamic(
+                  series: snapshot.data!,
+                  onSeriesUpdated: _refreshSeries,
+                );
+              },
+            ),
             const SizedBox(height: 24),
             const SectionTitle(title: "Consigliati per te"),
-            MovieGrid(movies: movies3),
+            MovieGrid(
+              movies: movies3,
+              onSeriesUpdated: _refreshSeries,
+            ),
             const SizedBox(height: 24),
             const SectionTitle(title: "Da non perdere"),
-            MovieGrid(movies: movies4),
+            MovieGrid(
+              movies: movies4,
+              onSeriesUpdated: _refreshSeries,
+            ),
             const SizedBox(height: 90),
           ],
         ),
       ),
-      bottomNavigationBar: const CustomFooter(),
-      //tasto di debug per il database
-      // da togliere nella versione finale
-      // permette di vedere il percorso del database e il contenuto
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          String dbPath = await DatabaseHelper.instance.getDatabasePath();
-          print('Il tuo database si trova in: $dbPath');
-          
-          // Testa anche il contenuto
-          await DatabaseHelper.instance.printAllSeries();
-        },
-        child: const Icon(Icons.storage),
-      ),
+      bottomNavigationBar: CustomFooter(onSeriesAdded: _refreshSeries),
     );
   }
 }
@@ -165,7 +168,13 @@ class SectionTitle extends StatelessWidget {
 
 class MovieGrid extends StatelessWidget {
   final List<Map<String, String>> movies;
-  const MovieGrid({super.key, required this.movies});
+  final VoidCallback onSeriesUpdated;
+
+  const MovieGrid({
+    super.key,
+    required this.movies,
+    required this.onSeriesUpdated,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -196,6 +205,7 @@ class MovieGrid extends StatelessWidget {
                     piattaforma: "Netflix",
                     isFavorite: false
                   ),
+                  onSeriesUpdated: onSeriesUpdated,
                 ),
               ),
             );
@@ -216,8 +226,62 @@ class MovieGrid extends StatelessWidget {
   }
 }
 
+class MovieGridDynamic extends StatelessWidget {
+  final List<Series> series;
+  final VoidCallback onSeriesUpdated;
+
+  const MovieGridDynamic({
+    super.key,
+    required this.series,
+    required this.onSeriesUpdated,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        childAspectRatio: 0.68,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 14,
+      ),
+      itemCount: series.length,
+      itemBuilder: (context, index) {
+        final s = series[index];
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SeriesScreen(
+                  series: s,
+                  onSeriesUpdated: onSeriesUpdated,
+                ),
+              ),
+            );
+          },
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.network(
+              s.imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (c, e, s) => Container(
+                color: Colors.grey[800],
+                child: const Icon(Icons.broken_image, color: Colors.white),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class CustomFooter extends StatelessWidget {
-  const CustomFooter({super.key});
+  final VoidCallback onSeriesAdded;
+  const CustomFooter({super.key, required this.onSeriesAdded});
 
   @override
   Widget build(BuildContext context) {
@@ -228,13 +292,22 @@ class CustomFooter extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-            icon: const Icon(Icons.show_chart, color: Colors.white, size: 30),
-            onPressed: () {},
+            icon: const Icon(Icons.add, color: Colors.white, size: 30),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AddEditSeriesScreen(),
+                ),
+              );
+              if (result == true) {
+                onSeriesAdded();
+              }
+            },
           ),
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white, size: 30),
             onPressed: () {
-              // Navigazione alla schermata di ricerca
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const SearchScreen()),
