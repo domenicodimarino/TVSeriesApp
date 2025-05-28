@@ -12,8 +12,9 @@ class DatabaseHelper {
   Future<Database> _initDatabase() async {
     return openDatabase(
       join(await getDatabasesPath(), 'series_database.db'),
-      onCreate: (db, version) {
-        return db.execute(
+      onCreate: (db, version) async {
+        // Prima crea la tabella
+        await db.execute(
           '''CREATE TABLE series(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             imageUrl TEXT NOT NULL,
@@ -25,9 +26,79 @@ class DatabaseHelper {
             isFavorite INTEGER NOT NULL DEFAULT 0
           )''',
         );
+        
+        // Poi popola con i dati iniziali
+        await _insertInitialData(db);
       },
       version: 1,
     );
+  }
+
+  // Metodo per inserire i dati iniziali
+  Future<void> _insertInitialData(Database db) async {
+    final List<Map<String, dynamic>> initialSeries = [
+      {
+        'title': 'Breaking Bad',
+        'trama': 'Walter White, un professore di chimica delle superiori che si trasforma in un produttore di metanfetamine dopo aver scoperto di avere un cancro ai polmoni.',
+        'genere': 'Drammatico, Crime',
+        'stato': 'Da guardare',
+        'piattaforma': 'Netflix',
+        'imageUrl': 'https://image.tmdb.org/t/p/w500/ggFHVNu6YYI5L9pCfOacjizRGt.jpg',
+        'isFavorite': 0,
+      },
+      {
+        'title': 'Stranger Things',
+        'trama': 'Quando un ragazzo scompare, la sua città natale si ritrova al centro di un mistero che coinvolge esperimenti governativi segreti, forze soprannaturali terrificanti e una ragazzina molto strana.',
+        'genere': 'Sci-Fi, Horror',
+        'stato': 'Da guardare',
+        'piattaforma': 'Netflix',
+        'imageUrl': 'https://image.tmdb.org/t/p/w500/49WJfeN0moxb9IPfGn8AIqMGskD.jpg',
+        'isFavorite': 0,
+      },
+      {
+        'title': 'The Mandalorian',
+        'trama': 'Le avventure di un cacciatore di taglie mandaloriano nei confini esterni della galassia, lontano dall\'autorità della Nuova Repubblica.',
+        'genere': 'Sci-Fi, Avventura',
+        'stato': 'Da guardare',
+        'piattaforma': 'Disney+',
+        'imageUrl': 'https://image.tmdb.org/t/p/w500/sWgBv7LV2PRoQgkxwlibdGXKz1S.jpg',
+        'isFavorite': 0,
+      },
+      {
+        'title': 'House of the Dragon',
+        'trama': 'La saga della Casa Targaryen ambientata 200 anni prima degli eventi de Il Trono di Spade.',
+        'genere': 'Fantasy, Drammatico',
+        'stato': 'Da guardare',
+        'piattaforma': 'HBO Max',
+        'imageUrl': 'https://image.tmdb.org/t/p/w500/z2yahl2uefxDCl0nogcRBstwruJ.jpg',
+        'isFavorite': 0,
+      },
+      {
+        'title': 'Wednesday',
+        'trama': 'Segue Wednesday Addams come studentessa alla Nevermore Academy, dove tenta di padroneggiare le sue abilità psichiche emergenti.',
+        'genere': 'Commedia, Horror',
+        'stato': 'Da guardare',
+        'piattaforma': 'Netflix',
+        'imageUrl': 'https://image.tmdb.org/t/p/w500/9PFonBhy4cQy7Jz20NpMygczOkv.jpg',
+        'isFavorite': 0,
+      },
+      {
+        'title': 'The Boys',
+        'trama': 'Un gruppo di vigilanti si propone di abbattere dei supereroi corrotti che abusano delle loro superpotenze.',
+        'genere': 'Azione, Drammatico',
+        'stato': 'Da guardare',
+        'piattaforma': 'Prime Video',
+        'imageUrl': 'https://image.tmdb.org/t/p/w500/stTEycfG9928HYGEISBFaG1ngjM.jpg',
+        'isFavorite': 0,
+      },
+    ];
+
+    // Inserisce ogni serie nel database
+    for (final series in initialSeries) {
+      await db.insert('series', series, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
+    print('Database popolato con ${initialSeries.length} serie iniziali');
   }
 
   Future<int> insertSeries(Series series) async {
@@ -65,8 +136,9 @@ class DatabaseHelper {
     );
   }
 
+  // Elimina una serie dal database
   Future<int> deleteSeries(int id) async {
-    final db = await database;
+    Database db = await instance.database;
     return await db.delete(
       'series',
       where: 'id = ?',
