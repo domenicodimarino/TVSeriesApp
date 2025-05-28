@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:collection/collection.dart';
 import 'main.dart';
 import 'series.dart';
 import 'database_helper.dart';
-import 'add_edit_series_screen.dart'; // Aggiungi questo import
+import 'add_edit_series_screen.dart';
+import 'season_episode_screen.dart';
 import 'widgets/series_image.dart';
 
 class SeriesScreen extends StatefulWidget {
@@ -15,13 +17,14 @@ class SeriesScreen extends StatefulWidget {
     required this.onSeriesUpdated,
   });
 
-      static const routeName = '/series';
+  static const routeName = '/series';
 
   @override
   State<SeriesScreen> createState() => _SeriesScreenState();
 }
 
 class _SeriesScreenState extends State<SeriesScreen> {
+  late Series currentSeries;
   late String statoSelezionato;
   late bool isFavorite;
   final List<String> stati = ["In corso", "Completata", "Da guardare"];
@@ -29,35 +32,78 @@ class _SeriesScreenState extends State<SeriesScreen> {
   @override
   void initState() {
     super.initState();
-    statoSelezionato = widget.series.stato;
-    isFavorite = widget.series.isFavorite;
+    currentSeries = widget.series;
+    statoSelezionato = currentSeries.stato;
+    isFavorite = currentSeries.isFavorite;
+  }
+
+  Future<void> _refreshSeries() async {
+    final updatedSeries = await DatabaseHelper.instance.getSeriesById(currentSeries.id!);
+    if (updatedSeries != null) {
+      setState(() {
+        currentSeries = updatedSeries;
+        statoSelezionato = updatedSeries.stato;
+        isFavorite = updatedSeries.isFavorite;
+      });
+    }
+    widget.onSeriesUpdated();
   }
 
   Future<void> _toggleFavorite() async {
     setState(() => isFavorite = !isFavorite);
     
     await DatabaseHelper.instance.updateFavoriteStatus(
-      widget.series.id!,
+      currentSeries.id!,
       isFavorite,
     );
 
     _showSnackBar(
       isFavorite 
-        ? '${widget.series.title} aggiunta ai preferiti!'
-        : '${widget.series.title} rimossa dai preferiti!',
+        ? '${currentSeries.title} aggiunta ai preferiti!'
+        : '${currentSeries.title} rimossa dai preferiti!',
       isFavorite ? Colors.green : Colors.red,
     );
 
-    widget.onSeriesUpdated();
+    _refreshSeries();
   }
 
   Future<void> _updateSeriesState(String newState) async {
     setState(() => statoSelezionato = newState);
     
-    final updatedSeries = widget.series.copyWith(stato: newState);
+    final updatedSeries = currentSeries.copyWith(stato: newState);
     await DatabaseHelper.instance.updateSeries(updatedSeries);
     
-    widget.onSeriesUpdated();
+    _refreshSeries();
+  }
+
+  Future<void> _toggleEpisodeWatchStatus(int seasonIndex, int episodeIndex) async {
+    final season = currentSeries.seasons[seasonIndex];
+    final episode = season.episodes[episodeIndex];
+    
+    final updatedEpisodes = season.episodes.mapIndexed((i, e) {
+      return i == episodeIndex
+          ? Episode(
+              episodeNumber: e.episodeNumber,
+              title: e.title,
+              watched: !e.watched,
+            )
+          : e;
+    }).toList();
+    
+    final updatedSeason = Season(
+      seasonNumber: season.seasonNumber,
+      name: season.name,
+      episodes: updatedEpisodes,
+    )..updateCompletionStatus();
+    
+    final updatedSeasons = currentSeries.seasons.mapIndexed((i, s) {
+      return i == seasonIndex ? updatedSeason : s;
+    }).toList();
+    
+    final updatedSeries = currentSeries.copyWith(seasons: updatedSeasons);
+    
+    await DatabaseHelper.instance.updateSeries(updatedSeries);
+    _refreshSeries();
   }
 
   void _showSnackBar(String message, Color color) {
@@ -87,57 +133,51 @@ class _SeriesScreenState extends State<SeriesScreen> {
       title: Image.asset("assets/domflix_logo.jpeg", height: 38),
       centerTitle: true,
       actions: [
-        PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert, color: Colors.white),
-          onSelected: (String result) {
-            switch (result) {
-              case 'edit':
-                _editSeries();
-                break;
-              case 'delete':
-                _showDeleteConfirmation();
-                break;
-            }
-          },
-          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-            const PopupMenuItem<String>(
-              value: 'edit',
-              child: ListTile(
-                leading: Icon(Icons.edit),
-                title: Text('Modifica'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem<String>(
-              value: 'delete',
-              child: ListTile(
-                leading: Icon(Icons.delete, color: Colors.red),
-                title: Text('Elimina', style: TextStyle(color: Colors.red)),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ],
+        IconButton(
+          icon: const Icon(Icons.edit, color: Colors.white),
+          onPressed: _editSeries,
+        ),
+        IconButton(
+          icon: const Icon(Icons.delete, color: Colors.white),
+          onPressed: _showDeleteConfirmation,
         ),
       ],
     );
   }
 
-  // Metodo per modificare la serie
-  void _editSeries() async {
+  Future<void> _editSeries() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddEditSeriesScreen(existingSeries: widget.series),
+        builder: (context) => AddEditSeriesScreen(existingSeries: currentSeries),
       ),
     );
 
     if (result == true) {
-      widget.onSeriesUpdated();
-      Navigator.pop(context); // Torna alla schermata principale dopo la modifica
+      _refreshSeries();
     }
   }
 
-  // Metodo per mostrare la conferma di eliminazione
+  void _manageSeasons() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SeasonEpisodeScreen(
+          series: currentSeries,
+          onSave: (updatedSeries) {
+            setState(() => currentSeries = updatedSeries);
+            DatabaseHelper.instance.updateSeries(updatedSeries);
+            _refreshSeries();
+          },
+        ),
+      ),
+    );
+
+    if (result != null) {
+      _refreshSeries();
+    }
+  }
+
   void _showDeleteConfirmation() {
     showDialog(
       context: context,
@@ -149,7 +189,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
             style: TextStyle(color: Colors.white),
           ),
           content: Text(
-            'Sei sicuro di voler eliminare "${widget.series.title}"?',
+            'Sei sicuro di voler eliminare "${currentSeries.title}"?',
             style: const TextStyle(color: Colors.white70),
           ),
           actions: [
@@ -176,18 +216,17 @@ class _SeriesScreenState extends State<SeriesScreen> {
     );
   }
 
-  // Metodo per eliminare la serie
   void _deleteSeries() async {
     try {
-      await DatabaseHelper.instance.deleteSeries(widget.series.id!);
+      await DatabaseHelper.instance.deleteSeries(currentSeries.id!);
       
       _showSnackBar(
-        '${widget.series.title} eliminata con successo!',
+        '${currentSeries.title} eliminata con successo!',
         Colors.green,
       );
 
       widget.onSeriesUpdated();
-      Navigator.pop(context); // Torna alla schermata principale
+      Navigator.pop(context);
     } catch (e) {
       _showSnackBar(
         'Errore durante l\'eliminazione: $e',
@@ -197,33 +236,41 @@ class _SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildBody() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSeriesImage(),
-            const SizedBox(height: 18),
-            _buildTitleRow(),
-            const SizedBox(height: 8),
-            _buildInfoRow("Genere:", widget.series.genere),
-            const SizedBox(height: 8),
-            _buildStateDropdown(),
-            const SizedBox(height: 8),
-            _buildInfoRow("Piattaforma:", widget.series.piattaforma),
-            const SizedBox(height: 16),
-            _buildPlotSection(),
-          ],
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSeriesImage(),
+                const SizedBox(height: 18),
+                _buildTitleRow(),
+                const SizedBox(height: 8),
+                _buildInfoRow("Genere:", currentSeries.genere),
+                const SizedBox(height: 8),
+                _buildStateDropdown(),
+                const SizedBox(height: 8),
+                _buildInfoRow("Piattaforma:", currentSeries.piattaforma),
+                const SizedBox(height: 8),
+                _buildProgressInfo(),
+                const SizedBox(height: 16),
+                _buildPlotSection(),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
         ),
-      ),
+        _buildSeasonsSection(),
+      ],
     );
   }
 
   Widget _buildSeriesImage() {
     return Center(
       child: SeriesImage(
-        series: widget.series,
+        series: currentSeries,
         height: 260,
         width: 180,
         borderRadius: BorderRadius.circular(12),
@@ -236,7 +283,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
       children: [
         Expanded(
           child: Text(
-            widget.series.title,
+            currentSeries.title,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 26,
@@ -269,6 +316,28 @@ class _SeriesScreenState extends State<SeriesScreen> {
         const SizedBox(width: 8),
         Text(
           value,
+          style: const TextStyle(
+            fontSize: 16,
+            color: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProgressInfo() {
+    return Row(
+      children: [
+        const Text(
+          "Progresso:",
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.white70,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          "${currentSeries.watchedEpisodes}/${currentSeries.totalEpisodes} episodi",
           style: const TextStyle(
             fontSize: 16,
             color: Colors.white,
@@ -322,13 +391,104 @@ class _SeriesScreenState extends State<SeriesScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          widget.series.trama,
+          currentSeries.trama,
           style: const TextStyle(
             fontSize: 16,
             color: Colors.white,
           ),
         ),
+        const SizedBox(height: 20),
+        Center(
+          child: ElevatedButton.icon(
+            onPressed: _manageSeasons,
+            icon: const Icon(Icons.playlist_add),
+            label: const Text("Gestisci Stagioni ed Episodi"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFB71C1C),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+          ),
+        ),
       ],
     );
+  }
+
+  Widget _buildSeasonsSection() {
+    if (currentSeries.seasons.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: const Center(
+            child: Text(
+              "Nessuna stagione disponibile",
+              style: TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, seasonIndex) {
+          final season = currentSeries.seasons[seasonIndex];
+          return _buildSeasonCard(season, seasonIndex);
+        },
+        childCount: currentSeries.seasons.length,
+      ),
+    );
+  }
+
+  Widget _buildSeasonCard(Season season, int seasonIndex) {
+    return Card(
+      color: const Color(0xFF23272F),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ExpansionTile(
+        leading: Checkbox(
+          value: season.isCompleted,
+          onChanged: null,
+        ),
+        title: Text(
+          season.name,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          '${season.episodes.where((e) => e.watched).length}/${season.episodes.length} episodi visti',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        children: [
+          ...season.episodes.mapIndexed((episodeIndex, episode) {
+            return _buildEpisodeTile(episode, seasonIndex, episodeIndex);
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEpisodeTile(Episode episode, int seasonIndex, int episodeIndex) {
+    return ListTile(
+      leading: Checkbox(
+        value: episode.watched,
+        onChanged: (_) => _toggleEpisodeWatchStatus(seasonIndex, episodeIndex),
+      ),
+      title: Text(
+        episode.title,
+        style: TextStyle(
+          color: Colors.white,
+          decoration: episode.watched ? TextDecoration.lineThrough : null,
+        ),
+      ),
+      subtitle: Text(
+        "Episodio ${episode.episodeNumber}",
+        style: const TextStyle(color: Colors.white70),
+      ),
+    );
+  }
+}
+
+extension IndexedIterable<E> on Iterable<E> {
+  Iterable<T> mapIndexed<T>(T Function(int index, E element) f) {
+    var index = 0;
+    return map((e) => f(index++, e));
   }
 }

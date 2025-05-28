@@ -1,7 +1,73 @@
-import 'package:sqflite/sqflite.dart';
+import 'dart:convert';
+import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
-import 'dart:io';
+
+class Season {
+  final int seasonNumber;
+  String name;
+  final List<Episode> episodes;
+  bool isCompleted;
+
+  Season({
+    required this.seasonNumber,
+    required this.name,
+    required this.episodes,
+    this.isCompleted = false,
+  });
+
+  void updateCompletionStatus() {
+    isCompleted = episodes.isNotEmpty && 
+        episodes.every((episode) => episode.watched);
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'seasonNumber': seasonNumber,
+      'name': name,
+      'episodes': episodes.map((e) => e.toMap()).toList(),
+      'isCompleted': isCompleted ? 1 : 0,
+    };
+  }
+
+  factory Season.fromMap(Map<String, dynamic> map) {
+    return Season(
+      seasonNumber: map['seasonNumber'] ?? 1,
+      name: map['name'] ?? 'Stagione ${map['seasonNumber'] ?? 1}',
+      episodes: List<Episode>.from(
+          (map['episodes'] as List?)?.map((x) => Episode.fromMap(x)) ?? []),
+      isCompleted: (map['isCompleted'] ?? 0) == 1,
+    );
+  }
+}
+
+class Episode {
+  final int episodeNumber;
+  String title;
+  bool watched;
+
+  Episode({
+    required this.episodeNumber,
+    required this.title,
+    this.watched = false,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'episodeNumber': episodeNumber,
+      'title': title,
+      'watched': watched ? 1 : 0,
+    };
+  }
+
+  factory Episode.fromMap(Map<String, dynamic> map) {
+    return Episode(
+      episodeNumber: map['episodeNumber'] ?? 1,
+      title: map['title'] ?? 'Episodio ${map['episodeNumber'] ?? 1}',
+      watched: (map['watched'] ?? 0) == 1,
+    );
+  }
+}
 
 class Series {
   final int? id;
@@ -12,10 +78,9 @@ class Series {
   final String stato;
   final String piattaforma;
   final bool isFavorite;
-  final int totalEpisodes;
-  final int watchedEpisodes;
-  final DateTime? lastWatched;
+  final List<Season> seasons;
   final DateTime? dateAdded;
+  final DateTime? dateCompleted; // Nuovo campo per tracciare il completamento
 
   const Series({
     this.id,
@@ -26,11 +91,31 @@ class Series {
     required this.stato,
     required this.piattaforma,
     this.isFavorite = false,
-    this.totalEpisodes = 1,
-    this.watchedEpisodes = 0,
-    this.lastWatched,
+    this.seasons = const [],
     this.dateAdded,
+    this.dateCompleted, // Aggiunto al costruttore
   });
+
+  int get totalEpisodes {
+    return seasons.fold(0, (sum, season) => sum + season.episodes.length);
+  }
+
+  int get watchedEpisodes {
+    return seasons.fold(0, (sum, season) {
+      return sum + season.episodes.where((e) => e.watched).length;
+    });
+  }
+
+  bool get allSeasonsCompleted {
+    return seasons.isNotEmpty && seasons.every((season) => season.isCompleted);
+  }
+
+  double get completionPercentage {
+    if (totalEpisodes == 0) return 0.0;
+    return (watchedEpisodes / totalEpisodes) * 100;
+  }
+
+  bool get isCompleted => totalEpisodes > 0 && watchedEpisodes >= totalEpisodes;
 
   bool get isLocalImage {
     return imageUrl.isNotEmpty &&
@@ -41,13 +126,6 @@ class Series {
   bool get isRemoteImage {
     return imageUrl.startsWith('http');
   }
-
-  double get completionPercentage {
-    if (totalEpisodes == 0) return 0.0;
-    return (watchedEpisodes / totalEpisodes) * 100;
-  }
-
-  bool get isCompleted => watchedEpisodes >= totalEpisodes;
 
   Future<String> getLocalImagePath() async {
     if (!isLocalImage) return imageUrl;
@@ -65,10 +143,9 @@ class Series {
     String? stato,
     String? piattaforma,
     bool? isFavorite,
-    int? totalEpisodes,
-    int? watchedEpisodes,
-    DateTime? lastWatched,
+    List<Season>? seasons,
     DateTime? dateAdded,
+    DateTime? dateCompleted, // Aggiunto al copyWith
   }) {
     return Series(
       id: id ?? this.id,
@@ -79,10 +156,9 @@ class Series {
       stato: stato ?? this.stato,
       piattaforma: piattaforma ?? this.piattaforma,
       isFavorite: isFavorite ?? this.isFavorite,
-      totalEpisodes: totalEpisodes ?? this.totalEpisodes,
-      watchedEpisodes: watchedEpisodes ?? this.watchedEpisodes,
-      lastWatched: lastWatched ?? this.lastWatched,
+      seasons: seasons ?? this.seasons,
       dateAdded: dateAdded ?? this.dateAdded,
+      dateCompleted: dateCompleted ?? this.dateCompleted, // Copiato
     );
   }
 
@@ -96,10 +172,9 @@ class Series {
       'stato': stato,
       'piattaforma': piattaforma,
       'isFavorite': isFavorite ? 1 : 0,
-      'totalEpisodes': totalEpisodes,
-      'watchedEpisodes': watchedEpisodes,
-      'lastWatched': lastWatched?.millisecondsSinceEpoch,
+      'seasons': jsonEncode(seasons.map((s) => s.toMap()).toList()),
       'dateAdded': dateAdded?.millisecondsSinceEpoch,
+      'dateCompleted': dateCompleted?.millisecondsSinceEpoch, // Aggiunto
     };
   }
 
@@ -113,13 +188,16 @@ class Series {
       stato: map['stato'] as String,
       piattaforma: map['piattaforma'] as String,
       isFavorite: (map['isFavorite'] as int) == 1,
-      totalEpisodes: map['totalEpisodes'] as int? ?? 1,
-      watchedEpisodes: map['watchedEpisodes'] as int? ?? 0,
-      lastWatched: map['lastWatched'] != null 
-          ? DateTime.fromMillisecondsSinceEpoch(map['lastWatched'] as int)
-          : null,
+      seasons: map['seasons'] != null
+          ? (jsonDecode(map['seasons']) as List)
+              .map((s) => Season.fromMap(s))
+              .toList()
+          : [],
       dateAdded: map['dateAdded'] != null 
           ? DateTime.fromMillisecondsSinceEpoch(map['dateAdded'] as int)
+          : null,
+      dateCompleted: map['dateCompleted'] != null // Aggiunto
+          ? DateTime.fromMillisecondsSinceEpoch(map['dateCompleted'] as int)
           : null,
     );
   }
@@ -137,8 +215,9 @@ Series {
   isFavorite: $isFavorite,
   totalEpisodes: $totalEpisodes,
   watchedEpisodes: $watchedEpisodes,
-  lastWatched: ${lastWatched?.toIso8601String()},
+  seasons: ${seasons.length},
   dateAdded: ${dateAdded?.toIso8601String()},
+  dateCompleted: ${dateCompleted?.toIso8601String()},
   completionPercentage: ${completionPercentage.toStringAsFixed(1)}%
 }''';
   }
@@ -156,10 +235,9 @@ Series {
             stato == other.stato &&
             piattaforma == other.piattaforma &&
             isFavorite == other.isFavorite &&
-            totalEpisodes == other.totalEpisodes &&
-            watchedEpisodes == other.watchedEpisodes &&
-            lastWatched == other.lastWatched &&
-            dateAdded == other.dateAdded);
+            seasons.length == other.seasons.length &&
+            dateAdded == other.dateAdded &&
+            dateCompleted == other.dateCompleted); // Aggiunto
   }
 
   @override
@@ -173,10 +251,9 @@ Series {
       stato,
       piattaforma,
       isFavorite,
-      totalEpisodes,
-      watchedEpisodes,
-      lastWatched,
+      seasons.length,
       dateAdded,
+      dateCompleted, // Aggiunto
     );
   }
 }
