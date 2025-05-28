@@ -5,7 +5,9 @@ import 'database_helper.dart';
 import 'series.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
-import 'widgets/series_image.dart';
+import 'widgets/series_image.dart'; // Aggiungi questo import
+import 'package:image/image.dart' as img; // Assicurati che questo import sia presente
+import 'dart:typed_data';
 import 'season_episode_screen.dart';
 
 class AddEditSeriesScreen extends StatefulWidget {
@@ -45,11 +47,15 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
   Series? _currentEditingSeries;
   bool _isTemporarySeries = false; // Flag per identificare serie temporanee
 
+  // Aggiungi la variabile _isFavorite se non c'è già
+  bool _isFavorite = false; 
+
   @override
   void initState() {
     super.initState();
     _currentEditingSeries = widget.existingSeries;
     
+
     if (_currentEditingSeries != null) {
       _titleController.text = _currentEditingSeries!.title;
       _tramaController.text = _currentEditingSeries!.trama;
@@ -60,12 +66,14 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
       if (_currentEditingSeries!.isLocalImage) {
         _useLocalImage = true;
         _loadExistingLocalImage();
+
       } else {
         _urlController.text = _currentEditingSeries!.imageUrl;
       }
     } else {
       _selectedPiattaforma = _piattaforme.first;
       _selectedStato = _stati.first;
+
       _useLocalImage = false;
     }
   }
@@ -74,26 +82,86 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
     if (_currentEditingSeries == null) return;
     
     try {
-      final String fullPath = await _currentEditingSeries!.getLocalImagePath();
-      setState(() {
-        _selectedImage = File(fullPath);
-      });
+      // Se widget.existingSeries!.isLocalImage è true, allora
+      // widget.existingSeries!.imageUrl è già il path completo.
+      if (widget.existingSeries != null && widget.existingSeries!.isLocalImage) {
+        final String fullPath = widget.existingSeries!.imageUrl;
+        final File imageFile = File(fullPath);
+      
+        if (await imageFile.exists()) {
+          setState(() {
+            _selectedImage = imageFile;
+          });
+        } else {
+          print('File immagine locale esistente non trovato: $fullPath');
+          // Potresti voler resettare _useLocalImage o _selectedImage qui
+          // o mostrare un placeholder/errore all'utente.
+        }
+      }
     } catch (e) {
-      print('Errore nel caricamento dell\'immagine: $e');
+      print('Errore nel caricamento dell\'immagine locale esistente: $e');
+
+    }
+  }
+  
+  Future<void> _pickImage() async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        // Non impostiamo imageQuality qui, lasciamo che il package 'image' gestisca la conversione
+      );
+
+
+      if (pickedFile != null) {
+        // Processa l'immagine per convertirla in JPEG e correggere i colori
+        await _processAndSaveHeicAsJpeg(pickedFile);
+      }
+    } catch (e) {
+      print('Errore durante la selezione dell\'immagine: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore nel caricamento dell\'immagine: $e')),
+        SnackBar(content: Text('Errore selezione immagine: $e')),
       );
     }
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _processAndSaveHeicAsJpeg(XFile heicFile) async {
     try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 85,
-      );
+      final Directory appDir = await getApplicationDocumentsDirectory();
+      final String imageDir = path.join(appDir.path, 'images');
+      await Directory(imageDir).create(recursive: true);
+
+      // Crea un nome file univoco con estensione .jpg
+      final String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final String localJpegPath = path.join(imageDir, fileName);
+
+      // Leggi i byte del file HEIC originale
+      final Uint8List heicBytes = await heicFile.readAsBytes();
+
+      // Decodifica l'immagine usando il package image
+      // Questo package ha un supporto migliore per vari formati, incluso HEIC
+      img.Image? originalImage = img.decodeImage(heicBytes);
+
+      if (originalImage != null) {
+        // Ricodifica l'immagine come JPEG
+        // Questo passaggio è cruciale per la corretta conversione del formato e dei colori
+        final List<int> jpegBytes = img.encodeJpg(originalImage, quality: 90); // Qualità 90 per buon compromesso
+
+        // Salva i byte JPEG nel nuovo file
+        final File jpegFile = File(localJpegPath);
+        await jpegFile.writeAsBytes(jpegBytes);
+
+        setState(() {
+          _selectedImage = jpegFile;
+        });
+        print('Immagine HEIC convertita e salvata come JPEG: $localJpegPath');
+      } else {
+        // Se la decodifica fallisce, prova una copia diretta come fallback
+        // (anche se questo probabilmente non risolverà i colori HEIC)
+        print('Decodifica HEIC fallita. Tentativo di copia diretta.');
+        await heicFile.saveTo(localJpegPath);
+         setState(() {
+          _selectedImage = File(localJpegPath);
+
       
       if (image != null) {
         final Directory appDir = await getApplicationDocumentsDirectory();
@@ -108,27 +176,37 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
         
         setState(() {
           _selectedImage = savedImage;
+
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Formato immagine non supportato per la conversione colori.')),
+        );
       }
     } catch (e) {
+      print('Errore durante la conversione HEIC->JPEG: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore nella selezione dell\'immagine: $e')),
+        SnackBar(content: Text('Errore conversione immagine: $e')),
       );
     }
   }
 
   Future<void> _saveSeries() async {
-    if (!_formKey.currentState!.validate()) return;
-    
-    setState(() => _isLoading = true);
-    
-    try {
-      String imageUrl = '';
-      
+
+    if (_formKey.currentState!.validate()) {
+      String imageUrlToSave = '';
       if (_useLocalImage && _selectedImage != null) {
-        imageUrl = path.basename(_selectedImage!.path);
+        // Salva solo il nome file, non il path completo!
+        imageUrlToSave = path.basename(_selectedImage!.path);
+        print('Saving local image filename: $imageUrlToSave');
       } else if (!_useLocalImage && _urlController.text.isNotEmpty) {
-        imageUrl = _urlController.text;
+        imageUrlToSave = _urlController.text; // URL di rete
+        print('Saving network image URL: $imageUrlToSave');
+      } else if (widget.existingSeries != null && widget.existingSeries!.imageUrl.isNotEmpty) {
+        // Se non è stata selezionata una nuova immagine e non è stato fornito un nuovo URL,
+        // mantieni l'immagine esistente.
+        imageUrlToSave = widget.existingSeries!.imageUrl;
+        print('Keeping existing image URL/path: $imageUrlToSave');
+
       }
 
       final newSeries = Series(
@@ -138,6 +216,7 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
         genere: _genereController.text,
         stato: _selectedStato,
         piattaforma: _selectedPiattaforma,
+
         imageUrl: imageUrl,
         isFavorite: _currentEditingSeries?.isFavorite ?? false,
         seasons: _currentEditingSeries?.seasons ?? [],
@@ -229,6 +308,7 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
           SnackBar(content: Text('Errore nella pulizia: $e')),
         );
       }
+
     }
   }
 

@@ -81,6 +81,12 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
     return allSeries.where((series) => series.stato == 'Completata').toList();
   }
 
+  // Carica suggerimenti dal database
+  Future<List<Series>> _loadDatabaseSuggestions() async {
+    // Usa i metodi del database per suggerimenti intelligenti
+    return await DatabaseHelper.instance.getSmartSuggestions(limit: 6);
+  }
+
   void _refreshSeries() {
     setState(() {});
   }
@@ -101,6 +107,29 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
         padding: const EdgeInsets.only(top: 8, left: 12, right: 12, bottom: 0),
         child: ListView(
           children: [
+            // NUOVA SEZIONE: Suggerimenti dal database
+            const SectionTitle(title: "🔥 Per te"),
+            FutureBuilder<List<Series>>(
+              future: _loadDatabaseSuggestions(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return const Text("Errore nel caricamento dei suggerimenti", 
+                      style: TextStyle(color: Colors.white70));
+                }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const EmptySection(message: "Aggiungi qualche serie per vedere i suggerimenti");
+                }
+                return MovieGridDynamic(
+                  series: snapshot.data!,
+                  onSeriesUpdated: _refreshSeries,
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+
             // Sezione Preferiti
             const SectionTitle(title: "⭐ I tuoi preferiti"),
             FutureBuilder<List<Series>>(

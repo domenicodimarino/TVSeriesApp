@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'dart:convert';
 import 'series.dart';
+import 'initial_series.dart';
 
 class DatabaseHelper {
   DatabaseHelper._privateConstructor();
@@ -99,56 +100,7 @@ class DatabaseHelper {
   }
 
   Future<void> _insertInitialData(Database db) async {
-    final initialSeries = [
-      Series(
-        title: 'Breaking Bad',
-        trama: 'Walter White, un professore di chimica delle superiori che si trasforma in un produttore di metanfetamine dopo aver scoperto di avere un cancro ai polmoni.',
-        genere: 'Drammatico, Crime',
-        stato: 'Da guardare',
-        piattaforma: 'Netflix',
-        imageUrl: 'https://image.tmdb.org/t/p/w500/ggFHVNu6YYI5L9pCfOacjizRGt.jpg',
-      ),
-      Series(
-        title: 'Stranger Things',
-        trama: 'Quando un ragazzo scompare, la sua città natale si ritrova al centro di un mistero che coinvolge esperimenti governativi segreti, forze soprannaturali terrificanti e una ragazzina molto strana.',
-        genere: 'Sci-Fi, Horror',
-        stato: 'Da guardare',
-        piattaforma: 'Netflix',
-        imageUrl: 'https://image.tmdb.org/t/p/w500/49WJfeN0moxb9IPfGn8AIqMGskD.jpg',
-      ),
-      Series(
-        title: 'The Mandalorian',
-        trama: 'Le avventure di un cacciatore di taglie mandaloriano nei confini esterni della galassia, lontano dall\'autorità della Nuova Repubblica.',
-        genere: 'Sci-Fi, Avventura',
-        stato: 'Da guardare',
-        piattaforma: 'Disney+',
-        imageUrl: 'https://image.tmdb.org/t/p/w500/sWgBv7LV2PRoQgkxwlibdGXKz1S.jpg',
-      ),
-      Series(
-        title: 'House of the Dragon',
-        trama: 'La saga della Casa Targaryen ambientata 200 anni prima degli eventi de Il Trono di Spade.',
-        genere: 'Fantasy, Drammatico',
-        stato: 'Da guardare',
-        piattaforma: 'HBO Max',
-        imageUrl: 'https://image.tmdb.org/t/p/w500/z2yahl2uefxDCl0nogcRBstwruJ.jpg',
-      ),
-      Series(
-        title: 'Wednesday',
-        trama: 'Segue Wednesday Addams come studentessa alla Nevermore Academy, dove tenta di padroneggiare le sue abilità psichiche emergenti.',
-        genere: 'Commedia, Horror',
-        stato: 'Da guardare',
-        piattaforma: 'Netflix',
-        imageUrl: 'https://image.tmdb.org/t/p/w500/9PFonBhy4cQy7Jz20NpMygczOkv.jpg',
-      ),
-      Series(
-        title: 'The Boys',
-        trama: 'Un gruppo di vigilanti si propone di abbattere dei supereroi corrotti che abusano delle loro superpotenze.',
-        genere: 'Azione, Drammatico',
-        stato: 'Da guardare',
-        piattaforma: 'Prime Video',
-        imageUrl: 'https://image.tmdb.org/t/p/w500/stTEycfG9928HYGEISBFaG1ngjM.jpg',
-      ),
-    ];
+    
 
     for (final series in initialSeries) {
       await insertSeries(series, db: db);
@@ -315,6 +267,69 @@ class DatabaseHelper {
     }
     
     return platformMap;
+  }
+
+  Future<List<Series>> getRandomSuggestions({int limit = 8}) async {
+    final db = await database;
+    
+    // Query per ottenere serie casuali
+    final List<Map<String, dynamic>> maps = await db.rawQuery(
+      'SELECT * FROM series ORDER BY RANDOM() LIMIT ?',
+      [limit],
+    );
+    
+    return List.generate(maps.length, (i) => Series.fromMap(maps[i]));
+  }
+
+  // Suggerimenti basati su generi delle serie preferite
+  Future<List<Series>> getSmartSuggestions({int limit = 8}) async {
+    final db = await database;
+
+    // Trova i generi delle serie preferite
+    final favoriteGenres = await db.rawQuery('''
+      SELECT DISTINCT genere FROM series WHERE isFavorite = 1
+    ''');
+
+    if (favoriteGenres.isEmpty) {
+      // Se non ci sono preferiti, restituisci casuali
+      return getRandomSuggestions(limit: limit);
+    }
+
+    // Costruisci condizioni LIKE per ogni genere preferito
+    final likeClauses = <String>[];
+    final args = <dynamic>[];
+    for (final g in favoriteGenres) {
+      final genre = g['genere'] as String;
+      // Se ci sono più generi separati da virgola, splitta e aggiungi tutti
+      for (final singleGenre in genre.split(',')) {
+        final trimmed = singleGenre.trim();
+        if (trimmed.isNotEmpty) {
+          likeClauses.add("genere LIKE ?");
+          args.add('%$trimmed%');
+        }
+      }
+    }
+
+    if (likeClauses.isEmpty) {
+      return getRandomSuggestions(limit: limit);
+    }
+
+    // Costruisci la query finale
+    final whereClause = likeClauses.join(' OR ');
+    args.add(limit);
+
+    final List<Map<String, dynamic>> maps = await db.rawQuery(
+      '''
+      SELECT * FROM series 
+      WHERE ($whereClause)
+      AND isFavorite = 0 
+      ORDER BY RANDOM() 
+      LIMIT ?
+      ''',
+      args,
+    );
+
+    return List.generate(maps.length, (i) => Series.fromMap(maps[i]));
   }
 
   // DEBUG UTILITIES
