@@ -200,6 +200,69 @@ class DatabaseHelper {
     );
   }
 
+  Future<List<Series>> getRandomSuggestions({int limit = 8}) async {
+    final db = await database;
+    
+    // Query per ottenere serie casuali
+    final List<Map<String, dynamic>> maps = await db.rawQuery(
+      'SELECT * FROM series ORDER BY RANDOM() LIMIT ?',
+      [limit],
+    );
+    
+    return List.generate(maps.length, (i) => Series.fromMap(maps[i]));
+  }
+
+  // Suggerimenti basati su generi delle serie preferite
+  Future<List<Series>> getSmartSuggestions({int limit = 8}) async {
+    final db = await database;
+
+    // Trova i generi delle serie preferite
+    final favoriteGenres = await db.rawQuery('''
+      SELECT DISTINCT genere FROM series WHERE isFavorite = 1
+    ''');
+
+    if (favoriteGenres.isEmpty) {
+      // Se non ci sono preferiti, restituisci casuali
+      return getRandomSuggestions(limit: limit);
+    }
+
+    // Costruisci condizioni LIKE per ogni genere preferito
+    final likeClauses = <String>[];
+    final args = <dynamic>[];
+    for (final g in favoriteGenres) {
+      final genre = g['genere'] as String;
+      // Se ci sono più generi separati da virgola, splitta e aggiungi tutti
+      for (final singleGenre in genre.split(',')) {
+        final trimmed = singleGenre.trim();
+        if (trimmed.isNotEmpty) {
+          likeClauses.add("genere LIKE ?");
+          args.add('%$trimmed%');
+        }
+      }
+    }
+
+    if (likeClauses.isEmpty) {
+      return getRandomSuggestions(limit: limit);
+    }
+
+    // Costruisci la query finale
+    final whereClause = likeClauses.join(' OR ');
+    args.add(limit);
+
+    final List<Map<String, dynamic>> maps = await db.rawQuery(
+      '''
+      SELECT * FROM series 
+      WHERE ($whereClause)
+      AND isFavorite = 0 
+      ORDER BY RANDOM() 
+      LIMIT ?
+      ''',
+      args,
+    );
+
+    return List.generate(maps.length, (i) => Series.fromMap(maps[i]));
+  }
+
   // DEBUG UTILITIES
   Future<String> getDatabasePath() async {
     final dbPath = await getDatabasesPath();
