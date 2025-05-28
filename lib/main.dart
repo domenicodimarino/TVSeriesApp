@@ -4,7 +4,7 @@ import 'series_screen.dart';
 import 'search_screen.dart';
 import 'add_edit_series_screen.dart';
 import 'database_helper.dart';
-import 'widgets/series_image.dart'; // Aggiungi questo import
+import 'widgets/series_image.dart';
 
 void main() => runApp(const LetterboxdApp());
 
@@ -37,53 +37,28 @@ class DomflixHomePage extends StatefulWidget {
 }
 
 class _DomflixHomePageState extends State<DomflixHomePage> {
-  static const movies1 = [
-    {
-      "title": "Mission: Impossible",
-      "image": "https://m.media-amazon.com/images/M/MV5BZGQ5NGEyYTItMjNiMi00Y2EwLTkzOWItMjc5YjJiMjMyNTI0XkEyXkFqcGc@._V1_.jpg",
-    },
-    {
-      "title": "Final Destination",
-      "image": "https://m.media-amazon.com/images/M/MV5BYjZkZDUwNWYtN2QzMy00M2U4LTgyY2QtYjhiMTYxZDcyZmYwXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg",
-    },
-    {
-      "title": "Prom Queen",
-      "image": "https://pad.mymovies.it/filmclub/2025/05/110/locandina.jpg",
-    },
-  ];
 
-  static const movies3 = [
-    {
-      "title": "Friendship",
-      "image": "https://i.ebayimg.com/images/g/nQQAAOSw3R1nqsAn/s-l400.jpg",
-    },
-    {
-      "title": "Mickey 17",
-      "image": "https://pad.mymovies.it/filmclub/2023/11/247/locandinapg3.jpg",
-    },
-    {
-      "title": "Mission: Impossible 2",
-      "image": "https://m.media-amazon.com/images/I/31zB1f3gHIL._AC_UF894,1000_QL80_.jpg",
-    },
-  ];
+  // Carica le serie in corso
+  Future<List<Series>> _loadInProgressSeries() async {
+    final allSeries = await DatabaseHelper.instance.getAllSeries();
+    return allSeries.where((series) => series.stato == 'In corso').toList();
+  }
 
-  static const movies4 = [
-    {
-      "title": "Alessandro Borghese 4 Ristoranti",
-      "image": "https://images.justwatch.com/poster/241301900/s718/alessandro-borghese-4-ristoranti.jpg",
-    },
-    {
-      "title": "The Last of Us",
-      "image": "https://i.ebayimg.com/images/g/bzwAAOSwhfFknCUl/s-l1200.jpg",
-    },
-    {
-      "title": "Make Cavese Great Again",
-      "image": "https://m.media-amazon.com/images/S/pv-target-images/e581c8d3b7e005fa48542674173fabc0578988fdee6f3b818e43132fe17a489a.png",
-    },
-  ];
+  // Carica le serie preferite
+  Future<List<Series>> _loadFavoriteSeries() async {
+    return await DatabaseHelper.instance.getFavoriteSeries();
+  }
 
-  Future<List<Series>> _loadUserSeries() async {
-    return await DatabaseHelper.instance.getAllSeries();
+  // Carica le serie da guardare (potrebbe piacerti)
+  Future<List<Series>> _loadWatchLaterSeries() async {
+    final allSeries = await DatabaseHelper.instance.getAllSeries();
+    return allSeries.where((series) => series.stato == 'Da guardare').toList();
+  }
+
+  // Carica le serie completate
+  Future<List<Series>> _loadCompletedSeries() async {
+    final allSeries = await DatabaseHelper.instance.getAllSeries();
+    return allSeries.where((series) => series.stato == 'Completata').toList();
   }
 
   void _refreshSeries() {
@@ -106,21 +81,21 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
         padding: const EdgeInsets.only(top: 8, left: 12, right: 12, bottom: 0),
         child: ListView(
           children: [
-            const SectionTitle(title: "Popular this week"),
-            MovieGrid(
-              movies: movies1,
-              onSeriesUpdated: _refreshSeries,
-            ),
-            const SizedBox(height: 24),
-            const SectionTitle(title: "Le tue serie"),
+
+            // Sezione Preferiti
+            const SectionTitle(title: "⭐ I tuoi preferiti"),
             FutureBuilder<List<Series>>(
-              future: _loadUserSeries(),
+              future: _loadFavoriteSeries(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                if (snapshot.hasError || !snapshot.hasData) {
-                  return const Text("Errore nel caricamento delle serie");
+                if (snapshot.hasError) {
+                  return const Text("Errore nel caricamento dei preferiti", 
+                      style: TextStyle(color: Colors.white70));
+                }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const EmptySection(message: "Nessuna serie tra i preferiti");
                 }
                 return MovieGridDynamic(
                   series: snapshot.data!,
@@ -129,22 +104,119 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
               },
             ),
             const SizedBox(height: 24),
-            const SectionTitle(title: "Consigliati per te"),
-            MovieGrid(
-              movies: movies3,
-              onSeriesUpdated: _refreshSeries,
+
+            // Sezione In corso
+            const SectionTitle(title: "📺 Le tue serie in corso"),
+            FutureBuilder<List<Series>>(
+              future: _loadInProgressSeries(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return const Text("Errore nel caricamento delle serie in corso",
+                      style: TextStyle(color: Colors.white70));
+                }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const EmptySection(message: "Nessuna serie in corso");
+                }
+                return MovieGridDynamic(
+                  series: snapshot.data!,
+                  onSeriesUpdated: _refreshSeries,
+                );
+              },
             ),
             const SizedBox(height: 24),
-            const SectionTitle(title: "Da non perdere"),
-            MovieGrid(
-              movies: movies4,
-              onSeriesUpdated: _refreshSeries,
+
+            // Sezione Da guardare (Potrebbe piacerti)
+            const SectionTitle(title: "🎬 Potrebbe piacerti"),
+            FutureBuilder<List<Series>>(
+              future: _loadWatchLaterSeries(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return const Text("Errore nel caricamento dei suggerimenti",
+                      style: TextStyle(color: Colors.white70));
+                }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const EmptySection(message: "Nessuna serie da guardare");
+                }
+                return MovieGridDynamic(
+                  series: snapshot.data!,
+                  onSeriesUpdated: _refreshSeries,
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+
+            // Sezione Completate
+            const SectionTitle(title: "✅ Serie completate"),
+            FutureBuilder<List<Series>>(
+              future: _loadCompletedSeries(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return const Text("Errore nel caricamento delle serie completate",
+                      style: TextStyle(color: Colors.white70));
+                }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const EmptySection(message: "Nessuna serie completata");
+                }
+                return MovieGridDynamic(
+                  series: snapshot.data!,
+                  onSeriesUpdated: _refreshSeries,
+                );
+              },
             ),
             const SizedBox(height: 90),
           ],
         ),
       ),
       bottomNavigationBar: CustomFooter(onSeriesAdded: _refreshSeries),
+    );
+  }
+}
+
+// Widget per sezioni vuote
+class EmptySection extends StatelessWidget {
+  final String message;
+  
+  const EmptySection({super.key, required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 200, // Stessa altezza delle altre sezioni
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[700]!),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.movie_outlined,
+              color: Colors.grey[600],
+              size: 32,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -179,50 +251,73 @@ class MovieGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: movies.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 0.68,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 14,
-      ),
-      itemBuilder: (context, index) {
-        final movie = movies[index];
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => SeriesScreen(
-                  series: Series(
-                    imageUrl: movie["image"]!,
-                    title: movie["title"]!,
-                    trama: "Trama di esempio per ${movie["title"]}",
-                    genere: "Genere di esempio",
-                    stato: "In corso",
-                    piattaforma: "Netflix",
-                    isFavorite: false
+    return SizedBox(
+      height: 200, // Altezza fissa per il contenitore
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal, // Scroll orizzontale
+        itemCount: movies.length,
+        itemBuilder: (context, index) {
+          final movie = movies[index];
+          return Container(
+            width: 130, // Larghezza fissa per ogni elemento
+            margin: const EdgeInsets.only(right: 12), // Spazio tra gli elementi
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SeriesScreen(
+                      series: Series(
+                        imageUrl: movie["image"]!,
+                        title: movie["title"]!,
+                        trama: "Trama di esempio per ${movie["title"]}",
+                        genere: "Genere di esempio",
+                        stato: "In corso",
+                        piattaforma: "Netflix",
+                        isFavorite: false
+                      ),
+                      onSeriesUpdated: onSeriesUpdated,
+                    ),
                   ),
-                  onSeriesUpdated: onSeriesUpdated,
-                ),
-              ),
-            );
-          },
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.network(
-              movie["image"]!,
-              fit: BoxFit.cover,
-              errorBuilder: (c, e, s) => Container(
-                color: Colors.grey[800],
+                );
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Immagine del film/serie
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(
+                        movie["image"]!,
+                        width: 130,
+                        fit: BoxFit.cover,
+                        errorBuilder: (c, e, s) => Container(
+                          width: 130,
+                          color: Colors.grey[800],
+                          child: const Icon(Icons.broken_image, color: Colors.white70),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  // Titolo del film/serie
+                  Text(
+                    movie["title"]!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
@@ -239,36 +334,57 @@ class MovieGridDynamic extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 0.68,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 14,
-      ),
-      itemCount: series.length,
-      itemBuilder: (context, index) {
-        final s = series[index];
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => SeriesScreen(
-                  series: s,
-                  onSeriesUpdated: onSeriesUpdated,
-                ),
+    return SizedBox(
+      height: 200, // Altezza fissa per il contenitore
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal, // Scroll orizzontale
+        itemCount: series.length,
+        itemBuilder: (context, index) {
+          final s = series[index];
+          return Container(
+            width: 130, // Larghezza fissa per ogni elemento
+            margin: const EdgeInsets.only(right: 12), // Spazio tra gli elementi
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SeriesScreen(
+                      series: s,
+                      onSeriesUpdated: onSeriesUpdated,
+                    ),
+                  ),
+                );
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Immagine della serie
+                  Expanded(
+                    child: SeriesImage(
+                      series: s,
+                      width: 130,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  // Titolo della serie
+                  Text(
+                    s.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-            );
-          },
-          child: SeriesImage(
-            series: s,
-            borderRadius: BorderRadius.circular(10),
-          ),
-        );
-      },
+            ),
+          );
+        },
+      ),
     );
   }
 }
