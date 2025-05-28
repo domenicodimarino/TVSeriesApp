@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'main.dart';
 import 'series.dart';
 import 'database_helper.dart';
-import 'widgets/series_image.dart'; // Aggiungi questo import
+import 'add_edit_series_screen.dart'; // Aggiungi questo import
+import 'widgets/series_image.dart';
 
 class SeriesScreen extends StatefulWidget {
   final Series series;
@@ -83,7 +84,114 @@ class _SeriesScreenState extends State<SeriesScreen> {
       backgroundColor: const Color(0xFFB71C1C),
       title: Image.asset("assets/domflix_logo.jpeg", height: 38),
       centerTitle: true,
+      actions: [
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert, color: Colors.white),
+          onSelected: (String result) {
+            switch (result) {
+              case 'edit':
+                _editSeries();
+                break;
+              case 'delete':
+                _showDeleteConfirmation();
+                break;
+            }
+          },
+          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+            const PopupMenuItem<String>(
+              value: 'edit',
+              child: ListTile(
+                leading: Icon(Icons.edit),
+                title: Text('Modifica'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem<String>(
+              value: 'delete',
+              child: ListTile(
+                leading: Icon(Icons.delete, color: Colors.red),
+                title: Text('Elimina', style: TextStyle(color: Colors.red)),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
+  }
+
+  // Metodo per modificare la serie
+  void _editSeries() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddEditSeriesScreen(existingSeries: widget.series),
+      ),
+    );
+
+    if (result == true) {
+      widget.onSeriesUpdated();
+      Navigator.pop(context); // Torna alla schermata principale dopo la modifica
+    }
+  }
+
+  // Metodo per mostrare la conferma di eliminazione
+  void _showDeleteConfirmation() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF2C2C2C),
+          title: const Text(
+            'Conferma eliminazione',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            'Sei sicuro di voler eliminare "${widget.series.title}"?',
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Annulla',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deleteSeries();
+              },
+              child: const Text(
+                'Elimina',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Metodo per eliminare la serie
+  void _deleteSeries() async {
+    try {
+      await DatabaseHelper.instance.deleteSeries(widget.series.id!);
+      
+      _showSnackBar(
+        '${widget.series.title} eliminata con successo!',
+        Colors.green,
+      );
+
+      widget.onSeriesUpdated();
+      Navigator.pop(context); // Torna alla schermata principale
+    } catch (e) {
+      _showSnackBar(
+        'Errore durante l\'eliminazione: $e',
+        Colors.red,
+      );
+    }
   }
 
   Widget _buildBody() {

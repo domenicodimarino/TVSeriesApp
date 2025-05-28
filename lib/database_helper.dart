@@ -65,8 +65,9 @@ class DatabaseHelper {
     );
   }
 
+  // Elimina una serie dal database
   Future<int> deleteSeries(int id) async {
-    final db = await database;
+    Database db = await instance.database;
     return await db.delete(
       'series',
       where: 'id = ?',

@@ -5,6 +5,7 @@ import 'database_helper.dart';
 import 'series.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'widgets/series_image.dart'; // Aggiungi questo import
 
 class AddEditSeriesScreen extends StatefulWidget {
   final Series? existingSeries;
@@ -52,7 +53,7 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
       // Determina se l'immagine esistente è locale o remota
       if (widget.existingSeries!.isLocalImage) {
         _useLocalImage = true;
-        _selectedImage = File(widget.existingSeries!.imageUrl);
+        _loadExistingLocalImage(); // Carica l'immagine locale in modo asincrono
       } else {
         _useLocalImage = false;
         _urlController.text = widget.existingSeries!.imageUrl;
@@ -60,6 +61,22 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
     } else {
       _selectedPiattaforma = _piattaforme.first;
       _selectedStato = _stati.first;
+    }
+  }
+
+  // Aggiungi questo metodo per caricare correttamente l'immagine esistente
+  Future<void> _loadExistingLocalImage() async {
+    try {
+      final String fullPath = await widget.existingSeries!.getLocalImagePath();
+      final File imageFile = File(fullPath);
+      
+      if (await imageFile.exists()) {
+        setState(() {
+          _selectedImage = imageFile;
+        });
+      }
+    } catch (e) {
+      print('Errore nel caricamento dell\'immagine esistente: $e');
     }
   }
 
@@ -256,26 +273,35 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              ElevatedButton.icon(
-                onPressed: _pickImage,
-                icon: const Icon(Icons.photo_library),
-                label: const Text('Seleziona dalla galleria'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFB71C1C),
-                  foregroundColor: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 8),
-              if (_selectedImage != null)
-                ElevatedButton.icon(
-                  onPressed: () => setState(() => _selectedImage = null),
-                  icon: const Icon(Icons.delete),
-                  label: const Text('Rimuovi'),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton.icon(
+                  onPressed: _pickImage,
+                  icon: const Icon(Icons.photo_library, size: 18),
+                  label: const Text('Seleziona', style: TextStyle(fontSize: 12)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[700],
+                    backgroundColor: const Color(0xFFB71C1C),
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                   ),
                 ),
+              ),
+              if (_selectedImage != null) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 1,
+                  child: ElevatedButton.icon(
+                    onPressed: () => setState(() => _selectedImage = null),
+                    icon: const Icon(Icons.delete, size: 18),
+                    label: const Text('Rimuovi', style: TextStyle(fontSize: 12)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[700],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ],
@@ -312,31 +338,12 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
             ),
           )
         else if (widget.existingSeries != null && widget.existingSeries!.imageUrl.isNotEmpty)
-          ClipRRect(
+          // Usa SeriesImage che gestisce automaticamente i percorsi corretti
+          SeriesImage(
+            series: widget.existingSeries!,
+            height: 200,
+            width: double.infinity,
             borderRadius: BorderRadius.circular(8),
-            child: widget.existingSeries!.isLocalImage
-                ? Image.file(
-                    File(widget.existingSeries!.imageUrl),
-                    height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      height: 200,
-                      color: Colors.grey[800],
-                      child: const Icon(Icons.broken_image, color: Colors.white70),
-                    ),
-                  )
-                : Image.network(
-                    widget.existingSeries!.imageUrl,
-                    height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      height: 200,
-                      color: Colors.grey[800],
-                      child: const Icon(Icons.broken_image, color: Colors.white70),
-                    ),
-                  ),
           )
         else
           Container(
