@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'dart:convert';
 import 'series.dart';
 import 'initial_series.dart';
 
@@ -10,7 +11,7 @@ class DatabaseHelper {
   static Database? _database;
   Future<Database> get database async => _database ??= await _initDatabase();
 
-  static const int _currentVersion = 2; // Versione corrente del database
+  static const int _currentVersion = 4; // Aggiornata a 4 per le nuove funzionalità
 
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
@@ -33,7 +34,12 @@ class DatabaseHelper {
     if (oldVersion < 2) {
       await _upgradeToVersion2(db);
     }
-    // Aggiungi qui ulteriori migrazioni per versioni future
+    if (oldVersion < 3) {
+      await _upgradeToVersion3(db);
+    }
+    if (oldVersion < 4) {
+      await _upgradeToVersion4(db);
+    }
   }
 
   Future<void> _createTables(Database db) async {
@@ -47,10 +53,9 @@ class DatabaseHelper {
         stato TEXT NOT NULL,
         piattaforma TEXT NOT NULL,
         isFavorite INTEGER NOT NULL DEFAULT 0,
-        totalEpisodes INTEGER NOT NULL DEFAULT 1,
-        watchedEpisodes INTEGER NOT NULL DEFAULT 0,
-        lastWatched INTEGER,
-        dateAdded INTEGER
+        seasons TEXT NOT NULL DEFAULT '[]',
+        dateAdded INTEGER,
+        dateCompleted INTEGER
       )
     ''');
   }
@@ -73,6 +78,25 @@ class DatabaseHelper {
     ''');
     
     print('Database aggiornato alla versione 2');
+  }
+
+  Future<void> _upgradeToVersion3(Database db) async {
+    await db.execute('ALTER TABLE series ADD COLUMN seasons TEXT DEFAULT \'[]\'');
+    
+    try {
+      await db.execute('ALTER TABLE series DROP COLUMN totalEpisodes');
+      await db.execute('ALTER TABLE series DROP COLUMN watchedEpisodes');
+      await db.execute('ALTER TABLE series DROP COLUMN lastWatched');
+    } catch (e) {
+      print("Ignorato errore rimozione colonne obsolete: $e");
+    }
+    
+    print('Database aggiornato alla versione 3 con supporto stagioni/episodi');
+  }
+
+  Future<void> _upgradeToVersion4(Database db) async {
+    await db.execute('ALTER TABLE series ADD COLUMN dateCompleted INTEGER');
+    print('Database aggiornato alla versione 4 con supporto statistiche avanzate');
   }
 
   Future<void> _insertInitialData(Database db) async {
@@ -110,6 +134,20 @@ class DatabaseHelper {
     return maps.map(Series.fromMap).toList();
   }
 
+  Future<Series?> getSeriesById(int id) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'series',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (maps.isNotEmpty) {
+      return Series.fromMap(maps.first);
+    }
+    return null;
+  }
+
   Future<int> updateSeries(Series series) async {
     final db = await database;
     return await db.update(
@@ -139,17 +177,96 @@ class DatabaseHelper {
     );
   }
 
-  Future<int> updateWatchedEpisodes(int id, int watchedEpisodes) async {
+  // Statistiche avanzate
+  Future<List<Series>> getSeriesCompletedBetween(DateTime start, DateTime end) async {
     final db = await database;
-    return await db.update(
+    final startMillis = start.millisecondsSinceEpoch;
+    final endMillis = end.millisecondsSinceEpoch;
+    
+    final List<Map<String, dynamic>> maps = await db.query(
       'series',
-      {
-        'watchedEpisodes': watchedEpisodes,
-        'lastWatched': DateTime.now().millisecondsSinceEpoch,
-      },
-      where: 'id = ?',
-      whereArgs: [id],
+      where: 'dateCompleted >= ? AND dateCompleted <= ?',
+      whereArgs: [startMillis, endMillis],
     );
+    
+    return maps.map(Series.fromMap).toList();
+  }
+
+  Future<List<Series>> getSeriesAddedBetween(DateTime start, DateTime end) async {
+    final db = await database;
+    final startMillis = start.millisecondsSinceEpoch;
+    final endMillis = end.millisecondsSinceEpoch;
+    
+    final List<Map<String, dynamic>> maps = await db.query(
+      'series',
+      where: 'dateAdded >= ? AND dateAdded <= ?',
+      whereArgs: [startMillis, endMillis],
+    );
+    
+    return maps.map(Series.fromMap).toList();
+  }
+
+  Future<int> getTotalCompletedSeries() async {
+    final db = await database;
+    final count = Sqflite.firstIntValue(await db.rawQuery(
+      'SELECT COUNT(*) FROM series WHERE dateCompleted IS NOT NULL'
+    ));
+    return count ?? 0;
+  }
+
+  Future<int> getTotalInProgressSeries() async {
+    final db = await database;
+    final count = Sqflite.firstIntValue(await db.rawQuery(
+      'SELECT COUNT(*) FROM series WHERE stato = ?',
+      ['In corso']
+    ));
+    return count ?? 0;
+  }
+
+  Future<Map<String, dynamic>> getMonthlyStats(int year, int month) async {
+    final db = await database;
+    final firstDay = DateTime(year, month, 1);
+    final lastDay = DateTime(year, month + 1, 0);
+    
+    final completed = await getSeriesCompletedBetween(firstDay, lastDay);
+    final added = await getSeriesAddedBetween(firstDay, lastDay);
+    
+    return {
+      'completed': completed.length,
+      'added': added.length,
+      'completedDetails': completed,
+      'addedDetails': added,
+    };
+  }
+
+  Future<Map<String, dynamic>> getWeeklyStats(DateTime referenceDate) async {
+    final start = referenceDate.subtract(const Duration(days: 7));
+    final end = referenceDate;
+    
+    final completed = await getSeriesCompletedBetween(start, end);
+    final added = await getSeriesAddedBetween(start, end);
+    
+    return {
+      'completed': completed.length,
+      'added': added.length,
+      'completedDetails': completed,
+      'addedDetails': added,
+    };
+  }
+
+  Future<Map<String, dynamic>> getPlatformStats() async {
+    final db = await database;
+    final platformMap = <String, int>{};
+    
+    final platforms = await db.rawQuery(
+      'SELECT piattaforma, COUNT(*) as count FROM series GROUP BY piattaforma'
+    );
+    
+    for (final platform in platforms) {
+      platformMap[platform['piattaforma'] as String] = platform['count'] as int;
+    }
+    
+    return platformMap;
   }
 
   Future<List<Series>> getRandomSuggestions({int limit = 8}) async {
@@ -229,7 +346,24 @@ class DatabaseHelper {
     print('Total series: ${series.length}');
     for (var s in series) {
       print(s.toString());
+      for (var season in s.seasons) {
+        print('  Season ${season.seasonNumber}: ${season.name}');
+        for (var episode in season.episodes) {
+          print('    Episode ${episode.episodeNumber}: ${episode.title} - Watched: ${episode.watched}');
+        }
+      }
     }
     print('========================');
+  }
+}
+
+// Estensione per mappe indicizzate
+extension IndexedIterable<E> on Iterable<E> {
+  Iterable<T> mapIndexed<T>(T Function(int index, E element) f) sync* {
+    var index = 0;
+    for (final element in this) {
+      yield f(index, element);
+      index++;
+    }
   }
 }

@@ -8,6 +8,7 @@ import 'package:path/path.dart' as path;
 import 'widgets/series_image.dart'; // Aggiungi questo import
 import 'package:image/image.dart' as img; // Assicurati che questo import sia presente
 import 'dart:typed_data';
+import 'season_episode_screen.dart';
 
 class AddEditSeriesScreen extends StatefulWidget {
   final Series? existingSeries;
@@ -41,7 +42,10 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
   
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
-  bool _useLocalImage = false; // Toggle tra URL e immagine locale
+  bool _useLocalImage = false;
+  bool _isLoading = false;
+  Series? _currentEditingSeries;
+  bool _isTemporarySeries = false; // Flag per identificare serie temporanee
 
   // Aggiungi la variabile _isFavorite se non c'è già
   bool _isFavorite = false; 
@@ -49,31 +53,34 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
   @override
   void initState() {
     super.initState();
+    _currentEditingSeries = widget.existingSeries;
     
-    if (widget.existingSeries != null) {
-      _titleController.text = widget.existingSeries!.title;
-      _tramaController.text = widget.existingSeries!.trama;
-      _genereController.text = widget.existingSeries!.genere;
-      _selectedPiattaforma = widget.existingSeries!.piattaforma;
-      _selectedStato = widget.existingSeries!.stato;
-      _isFavorite = widget.existingSeries!.isFavorite; // Assicurati che _isFavorite sia inizializzata
+
+    if (_currentEditingSeries != null) {
+      _titleController.text = _currentEditingSeries!.title;
+      _tramaController.text = _currentEditingSeries!.trama;
+      _genereController.text = _currentEditingSeries!.genere;
+      _selectedPiattaforma = _currentEditingSeries!.piattaforma;
+      _selectedStato = _currentEditingSeries!.stato;
       
-      if (widget.existingSeries!.isLocalImage) {
+      if (_currentEditingSeries!.isLocalImage) {
         _useLocalImage = true;
-        // _loadExistingLocalImage() è corretto se imageUrl è già il path completo
-        _loadExistingLocalImage(); 
+        _loadExistingLocalImage();
+
       } else {
-        _useLocalImage = false;
-        _urlController.text = widget.existingSeries!.imageUrl;
+        _urlController.text = _currentEditingSeries!.imageUrl;
       }
     } else {
       _selectedPiattaforma = _piattaforme.first;
       _selectedStato = _stati.first;
-      _isFavorite = false; // Default per nuove serie
+
+      _useLocalImage = false;
     }
   }
 
   Future<void> _loadExistingLocalImage() async {
+    if (_currentEditingSeries == null) return;
+    
     try {
       // Se widget.existingSeries!.isLocalImage è true, allora
       // widget.existingSeries!.imageUrl è già il path completo.
@@ -93,6 +100,7 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
       }
     } catch (e) {
       print('Errore nel caricamento dell\'immagine locale esistente: $e');
+
     }
   }
   
@@ -102,6 +110,7 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
         source: ImageSource.gallery,
         // Non impostiamo imageQuality qui, lasciamo che il package 'image' gestisca la conversione
       );
+
 
       if (pickedFile != null) {
         // Processa l'immagine per convertirla in JPEG e correggere i colori
@@ -152,6 +161,22 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
         await heicFile.saveTo(localJpegPath);
          setState(() {
           _selectedImage = File(localJpegPath);
+
+      
+      if (image != null) {
+        final Directory appDir = await getApplicationDocumentsDirectory();
+        final String imagesDir = path.join(appDir.path, 'images');
+        await Directory(imagesDir).create(recursive: true);
+        
+        final String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final String localPath = path.join(imagesDir, fileName);
+        
+        final File newImage = File(image.path);
+        final File savedImage = await newImage.copy(localPath);
+        
+        setState(() {
+          _selectedImage = savedImage;
+
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Formato immagine non supportato per la conversione colori.')),
@@ -166,6 +191,7 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
   }
 
   Future<void> _saveSeries() async {
+
     if (_formKey.currentState!.validate()) {
       String imageUrlToSave = '';
       if (_useLocalImage && _selectedImage != null) {
@@ -180,36 +206,109 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
         // mantieni l'immagine esistente.
         imageUrlToSave = widget.existingSeries!.imageUrl;
         print('Keeping existing image URL/path: $imageUrlToSave');
+
       }
 
       final newSeries = Series(
-        id: widget.existingSeries?.id,
+        id: _currentEditingSeries?.id,
         title: _titleController.text,
         trama: _tramaController.text,
         genere: _genereController.text,
         stato: _selectedStato,
         piattaforma: _selectedPiattaforma,
-        imageUrl: imageUrlToSave, // Questo sarà o un path locale o un URL
-        isFavorite: _isFavorite, // Usa la variabile di stato _isFavorite
-        // Assicurati di passare anche gli altri campi come seasons, dateAdded, ecc. se li usi
-        // seasons: widget.existingSeries?.seasons ?? [], 
-        // dateAdded: widget.existingSeries?.dateAdded ?? DateTime.now(),
-        // dateCompleted: widget.existingSeries?.dateCompleted,
+
+        imageUrl: imageUrl,
+        isFavorite: _currentEditingSeries?.isFavorite ?? false,
+        seasons: _currentEditingSeries?.seasons ?? [],
+        dateAdded: _currentEditingSeries?.dateAdded ?? DateTime.now(),
       );
 
+      if (_currentEditingSeries != null) {
+        await DatabaseHelper.instance.updateSeries(newSeries);
+      } else {
+        await DatabaseHelper.instance.insertSeries(newSeries);
+      }
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore nel salvataggio: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _manageSeasons() async {
+    // Se non c'è una serie esistente, crea una temporanea
+    if (_currentEditingSeries == null) {
+      if (!_formKey.currentState!.validate()) return;
+      
+      setState(() => _isLoading = true);
       try {
-        if (widget.existingSeries != null) {
-          await DatabaseHelper.instance.updateSeries(newSeries);
-        } else {
-          await DatabaseHelper.instance.insertSeries(newSeries);
+        String imageUrl = '';
+        if (_useLocalImage && _selectedImage != null) {
+          imageUrl = path.basename(_selectedImage!.path);
+        } else if (!_useLocalImage) {
+          imageUrl = _urlController.text;
         }
-        Navigator.pop(context, true); // Indica che le modifiche sono state salvate
+
+        final tempSeries = Series(
+          title: _titleController.text,
+          trama: _tramaController.text,
+          genere: _genereController.text,
+          stato: _selectedStato,
+          piattaforma: _selectedPiattaforma,
+          imageUrl: imageUrl,
+          seasons: [],
+          dateAdded: DateTime.now(),
+        );
+        
+        final id = await DatabaseHelper.instance.insertSeries(tempSeries);
+        setState(() {
+          _currentEditingSeries = tempSeries.copyWith(id: id);
+          _isTemporarySeries = true; // Contrassegna come temporanea
+        });
       } catch (e) {
-        print("Errore durante il salvataggio della serie: $e");
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore salvataggio serie: $e')),
+          SnackBar(content: Text('Errore nella creazione temporanea: $e')),
+        );
+        return;
+      } finally {
+        setState(() => _isLoading = false);
+      }
+    }
+
+    // Naviga alla schermata di gestione stagioni
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SeasonEpisodeScreen(
+          series: _currentEditingSeries!,
+          onSave: (updatedSeries) {
+            setState(() {
+              _currentEditingSeries = updatedSeries;
+              _isTemporarySeries = false; // Non è più temporanea
+            });
+          },
+        ),
+      ),
+    );
+
+    // Se l'utente annulla e la serie era temporanea, eliminala
+    if (result == null && _isTemporarySeries) {
+      try {
+        await DatabaseHelper.instance.deleteSeries(_currentEditingSeries!.id!);
+        setState(() {
+          _currentEditingSeries = null;
+          _isTemporarySeries = false;
+        });
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore nella pulizia: $e')),
         );
       }
+
     }
   }
 
@@ -225,38 +324,55 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
           style: const TextStyle(color: Colors.white),
         ),
         actions: [
-          IconButton(
+          if (!_isLoading) IconButton(
             icon: const Icon(Icons.save),
             onPressed: _saveSeries,
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              _buildImagePreview(),
-              const SizedBox(height: 20),
-              _buildTextField(_titleController, 'Titolo', maxLines: 1),
-              const SizedBox(height: 16),
-              _buildTextField(_tramaController, 'Trama', maxLines: 5),
-              const SizedBox(height: 16),
-              _buildTextField(_genereController, 'Genere', maxLines: 1),
-              const SizedBox(height: 16),
-              _buildDropdown('Piattaforma', _piattaforme, _selectedPiattaforma, 
-                  (value) => setState(() => _selectedPiattaforma = value!)),
-              const SizedBox(height: 16),
-              _buildDropdown('Stato', _stati, _selectedStato, 
-                  (value) => setState(() => _selectedStato = value!)),
-              const SizedBox(height: 16),
-              _buildImageSourceToggle(),
-              const SizedBox(height: 16),
-              _useLocalImage ? _buildImageSelector() : _buildUrlField(),
-            ],
-          ),
-        ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Form(
+                key: _formKey,
+                child: ListView(
+                  children: [
+                    _buildImagePreview(),
+                    const SizedBox(height: 20),
+                    _buildTextField(_titleController, 'Titolo', maxLines: 1),
+                    const SizedBox(height: 16),
+                    _buildTextField(_tramaController, 'Trama', maxLines: 5),
+                    const SizedBox(height: 16),
+                    _buildTextField(_genereController, 'Genere', maxLines: 1),
+                    const SizedBox(height: 16),
+                    _buildDropdown('Piattaforma', _piattaforme, _selectedPiattaforma, 
+                        (value) => setState(() => _selectedPiattaforma = value!)),
+                    const SizedBox(height: 16),
+                    _buildDropdown('Stato', _stati, _selectedStato, 
+                        (value) => setState(() => _selectedStato = value!)),
+                    const SizedBox(height: 16),
+                    _buildImageSourceToggle(),
+                    const SizedBox(height: 16),
+                    _useLocalImage ? _buildImageSelector() : _buildUrlField(),
+                    const SizedBox(height: 24),
+                    if (_currentEditingSeries != null) 
+                      _buildManageSeasonsButton(),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildManageSeasonsButton() {
+    return ElevatedButton.icon(
+      onPressed: _manageSeasons,
+      icon: const Icon(Icons.playlist_add),
+      label: const Text("Gestisci Stagioni ed Episodi"),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFFB71C1C),
+        padding: const EdgeInsets.symmetric(vertical: 16),
       ),
     );
   }
@@ -283,16 +399,7 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
                   title: const Text('URL', style: TextStyle(color: Colors.white)),
                   value: false,
                   groupValue: _useLocalImage,
-                  onChanged: (value) {
-                    setState(() {
-                      _useLocalImage = value!;
-                      if (!_useLocalImage) {
-                        _selectedImage = null;
-                      } else {
-                        _urlController.clear();
-                      }
-                    });
-                  },
+                  onChanged: (value) => setState(() => _useLocalImage = value!),
                   activeColor: const Color(0xFFB71C1C),
                 ),
               ),
@@ -301,16 +408,7 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
                   title: const Text('Locale', style: TextStyle(color: Colors.white)),
                   value: true,
                   groupValue: _useLocalImage,
-                  onChanged: (value) {
-                    setState(() {
-                      _useLocalImage = value!;
-                      if (!_useLocalImage) {
-                        _selectedImage = null;
-                      } else {
-                        _urlController.clear();
-                      }
-                    });
-                  },
+                  onChanged: (value) => setState(() => _useLocalImage = value!),
                   activeColor: const Color(0xFFB71C1C),
                 ),
               ),
@@ -346,12 +444,12 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
                 flex: 2,
                 child: ElevatedButton.icon(
                   onPressed: _pickImage,
-                  icon: const Icon(Icons.photo_library, size: 18),
-                  label: const Text('Seleziona', style: TextStyle(fontSize: 12)),
+                  icon: const Icon(Icons.photo_library),
+                  label: const Text('Seleziona immagine'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFB71C1C),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
               ),
@@ -361,12 +459,12 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
                   flex: 1,
                   child: ElevatedButton.icon(
                     onPressed: () => setState(() => _selectedImage = null),
-                    icon: const Icon(Icons.delete, size: 18),
-                    label: const Text('Rimuovi', style: TextStyle(fontSize: 12)),
+                    icon: const Icon(Icons.delete),
+                    label: const Text('Rimuovi'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey[700],
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
                 ),
@@ -379,51 +477,49 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
   }
 
   Widget _buildImagePreview() {
-    return Column(
-      children: [
-        if (_useLocalImage && _selectedImage != null)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.file(
-              _selectedImage!,
-              height: 200,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
-          )
-        else if (!_useLocalImage && _urlController.text.isNotEmpty)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              _urlController.text,
-              height: 200,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                height: 200,
-                color: Colors.grey[800],
-                child: const Icon(Icons.broken_image, color: Colors.white70),
-              ),
-            ),
-          )
-        else if (widget.existingSeries != null && widget.existingSeries!.imageUrl.isNotEmpty)
-          // Usa SeriesImage che gestisce automaticamente i percorsi corretti
-          SeriesImage(
-            series: widget.existingSeries!,
-            height: 200,
-            width: double.infinity,
-            borderRadius: BorderRadius.circular(8),
-          )
-        else
-          Container(
-            height: 200,
-            color: Colors.grey[800],
-            child: const Center(
-              child: Text('Nessuna immagine selezionata', 
-                  style: TextStyle(color: Colors.white70)),
-            ),
-          ),
-      ],
+    Widget imageWidget;
+    
+    if (_useLocalImage && _selectedImage != null) {
+      imageWidget = Image.file(_selectedImage!, fit: BoxFit.cover);
+    } else if (!_useLocalImage && _urlController.text.isNotEmpty) {
+      imageWidget = Image.network(
+        _urlController.text,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+      );
+    } else if (_currentEditingSeries != null && _currentEditingSeries!.imageUrl.isNotEmpty) {
+      imageWidget = SeriesImage(
+        series: _currentEditingSeries!,
+        height: 200,
+        width: double.infinity,
+        borderRadius: BorderRadius.circular(8),
+      );
+    } else {
+      imageWidget = _buildPlaceholder();
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 200,
+        width: double.infinity,
+        color: Colors.grey[900],
+        child: imageWidget,
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.photo_camera, size: 48, color: Colors.white70),
+          SizedBox(height: 8),
+          Text('Nessuna immagine selezionata', 
+              style: TextStyle(color: Colors.white70)),
+        ],
+      ),
     );
   }
 
@@ -438,6 +534,9 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
         border: const OutlineInputBorder(),
         enabledBorder: const OutlineInputBorder(
           borderSide: BorderSide(color: Colors.white70),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: Color(0xFFB71C1C)),
         ),
       ),
       validator: (value) {
@@ -455,6 +554,12 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
         labelText: label,
         labelStyle: const TextStyle(color: Colors.white70),
         border: const OutlineInputBorder(),
+        enabledBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.white70),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: Color(0xFFB71C1C)),
+        ),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(

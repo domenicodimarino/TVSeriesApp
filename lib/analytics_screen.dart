@@ -7,7 +7,7 @@ import 'main.dart';
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
 
-    static const routeName = '/analytics';
+  static const routeName = '/analytics';
 
   @override
   State<AnalyticsScreen> createState() => _AnalyticsScreenState();
@@ -16,6 +16,12 @@ class AnalyticsScreen extends StatefulWidget {
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
   List<Series> _allSeries = [];
   bool _isLoading = true;
+  Map<String, dynamic> _monthlyStats = {};
+  Map<String, dynamic> _weeklyStats = {};
+  Map<String, int> _platformStats = {};
+  int _totalCompleted = 0;
+  int _inProgress = 0;
+  int? _touchedIndex;
 
   @override
   void initState() {
@@ -26,9 +32,27 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
+      final now = DateTime.now();
+      
       final series = await DatabaseHelper.instance.getAllSeries();
+      final monthly = await DatabaseHelper.instance.getMonthlyStats(now.year, now.month);
+      final weekly = await DatabaseHelper.instance.getWeeklyStats(now);
+      final platforms = await DatabaseHelper.instance.getPlatformStats();
+      final completed = await DatabaseHelper.instance.getTotalCompletedSeries();
+      final inProgress = await DatabaseHelper.instance.getTotalInProgressSeries();
+
+      final platformStatsInt = <String, int>{};
+      platforms.forEach((key, value) {
+        platformStatsInt[key] = value is int ? value : int.tryParse(value.toString()) ?? 0;
+      });
+
       setState(() {
         _allSeries = series;
+        _monthlyStats = monthly;
+        _weeklyStats = weekly;
+        _platformStats = platformStatsInt;
+        _totalCompleted = completed;
+        _inProgress = inProgress;
         _isLoading = false;
       });
     } catch (e) {
@@ -36,49 +60,18 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }
   }
 
-  // Calcola statistiche generali
   Map<String, int> get _generalStats {
     final total = _allSeries.length;
-    final completed = _allSeries.where((s) => s.stato == 'Completata').length;
-    final inProgress = _allSeries.where((s) => s.stato == 'In corso').length;
-    final toWatch = _allSeries.where((s) => s.stato == 'Da guardare').length;
+    final toWatch = total - _totalCompleted - _inProgress;
     
     return {
       'total': total,
-      'completed': completed,
-      'inProgress': inProgress,
-      'toWatch': toWatch,
+      'completed': _totalCompleted,
+      'inProgress': _inProgress,
+      'toWatch': toWatch > 0 ? toWatch : 0,
     };
   }
 
-  // Calcola episodi visti per settimana/mese
-  Map<String, double> get _viewingStats {
-    final totalEpisodes = _allSeries.fold<int>(0, (sum, s) => sum + s.watchedEpisodes);
-    final now = DateTime.now();
-    
-    // Calcola giorni dall'aggiunta della prima serie
-    final oldestSeries = _allSeries
-        .where((s) => s.dateAdded != null)
-        .fold<DateTime?>(null, (oldest, s) {
-      if (oldest == null) return s.dateAdded;
-      return s.dateAdded!.isBefore(oldest) ? s.dateAdded : oldest;
-    });
-    
-    final daysSinceStart = oldestSeries != null 
-        ? now.difference(oldestSeries).inDays 
-        : 1;
-    
-    final weeksActive = (daysSinceStart / 7).ceil();
-    final monthsActive = (daysSinceStart / 30).ceil();
-    
-    return {
-      'episodesPerWeek': weeksActive > 0 ? totalEpisodes / weeksActive : 0,
-      'episodesPerMonth': monthsActive > 0 ? totalEpisodes / monthsActive : 0,
-      'totalEpisodes': totalEpisodes.toDouble(),
-    };
-  }
-
-  // Distribuzione per genere
   Map<String, int> get _genreDistribution {
     final distribution = <String, int>{};
     for (final series in _allSeries) {
@@ -87,16 +80,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     return distribution;
   }
 
-  // Distribuzione per piattaforma
-  Map<String, int> get _platformDistribution {
-    final distribution = <String, int>{};
-    for (final series in _allSeries) {
-      distribution[series.piattaforma] = (distribution[series.piattaforma] ?? 0) + 1;
-    }
-    return distribution;
-  }
-
-  // Serie più seguite (per episodi visti)
   List<Series> get _mostWatchedSeries {
     final sorted = List<Series>.from(_allSeries);
     sorted.sort((a, b) => b.watchedEpisodes.compareTo(a.watchedEpisodes));
@@ -153,7 +136,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         children: [
           _buildGeneralStatsSection(),
           const SizedBox(height: 24),
-          _buildViewingStatsSection(),
+          _buildTimeStatsSection(),
           const SizedBox(height: 24),
           _buildDistributionSection(),
           const SizedBox(height: 24),
@@ -170,52 +153,67 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     final stats = _generalStats;
     
     return _buildSection(
-      title: '📊 Statistiche Generali',
-      child: Row(
+      title: '📊 Statistiche generali',
+      child: GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 2,
+        childAspectRatio: 1.5,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
         children: [
-          Expanded(child: _buildStatCard('Totale', stats['total']!, Colors.blue)),
-          const SizedBox(width: 12),
-          Expanded(child: _buildStatCard('Completate', stats['completed']!, Colors.green)),
-          const SizedBox(width: 12),
-          Expanded(child: _buildStatCard('In Corso', stats['inProgress']!, Colors.orange)),
-          const SizedBox(width: 12),
-          Expanded(child: _buildStatCard('Da Guardare', stats['toWatch']!, Colors.red)),
+          _buildStatCard('Totale', stats['total']!, Colors.blue),
+          _buildStatCard('Completate', stats['completed']!, Colors.green),
+          _buildStatCard('In Corso', stats['inProgress']!, Colors.orange),
+          _buildStatCard('Da Guardare', stats['toWatch']!, Colors.red),
         ],
       ),
     );
   }
 
-  Widget _buildViewingStatsSection() {
-    final stats = _viewingStats;
-    
+  Widget _buildTimeStatsSection() {
     return _buildSection(
-      title: '⏱️ Statistiche Visione',
+      title: '⏱️ Statistiche temporali',
       child: Column(
         children: [
           Row(
             children: [
               Expanded(
                 child: _buildStatCard(
-                  'Episodi/Settimana', 
-                  stats['episodesPerWeek']!.toStringAsFixed(1), 
+                  'Completate Settimana', 
+                  _weeklyStats['completed'] ?? 0, 
                   Colors.purple,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
-                  'Episodi/Mese', 
-                  stats['episodesPerMonth']!.toStringAsFixed(1), 
+                  'Completate Mese', 
+                  _monthlyStats['completed'] ?? 0, 
                   Colors.teal,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          _buildStatCard(
-            'Episodi Totali Visti', 
-            stats['totalEpisodes']!.toInt(), 
-            Colors.indigo,
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  'Aggiunte Settimana', 
+                  _weeklyStats['added'] ?? 0, 
+                  Colors.indigo,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  'Aggiunte Mese', 
+                  _monthlyStats['added'] ?? 0, 
+                  Colors.amber,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -224,19 +222,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   Widget _buildDistributionSection() {
     final genreData = _genreDistribution;
-    final platformData = _platformDistribution;
+    final platformData = _platformStats;
     
     return _buildSection(
       title: '📈 Distribuzione',
       child: Column(
         children: [
           _buildChartContainer(
-            title: 'Per Genere',
+            title: 'Per genere',
             child: _buildPieChart(genreData),
           ),
           const SizedBox(height: 16),
           _buildChartContainer(
-            title: 'Per Piattaforma',
+            title: 'Per piattaforma',
             child: _buildBarChart(platformData),
           ),
         ],
@@ -248,7 +246,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     final mostWatched = _mostWatchedSeries;
     
     return _buildSection(
-      title: '🏆 Serie Più Seguite',
+      title: '🏆 Serie più seguite',
       child: Column(
         children: mostWatched.asMap().entries.map((entry) {
           final index = entry.key;
@@ -266,7 +264,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       ..sort((a, b) => b.completionPercentage.compareTo(a.completionPercentage));
     
     return _buildSection(
-      title: '📋 Progressi di Visione',
+      title: '📋 Progressi di visione',
       child: Column(
         children: seriesWithProgress.take(10).map((series) {
           return _buildProgressTile(series);
@@ -310,6 +308,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             value.toString(),
@@ -327,6 +326,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               fontSize: 12,
             ),
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -372,15 +373,25 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     ];
 
     final List<PieChartSectionData> pieSections = [];
+    final List<String> labels = data.keys.toList();
     int index = 0;
+    
     data.forEach((label, value) {
+      final isTouched = index == _touchedIndex;
+      final fontSize = isTouched ? 16.0 : 14.0;
+      final radius = isTouched ? 70.0 : 60.0;
+      
       pieSections.add(
         PieChartSectionData(
           color: colors[index % colors.length],
           value: value.toDouble(),
-          title: '$label\n$value',
-          radius: 60,
-          titleStyle: const TextStyle(fontSize: 12, color: Colors.white),
+          title: '$value',
+          radius: radius,
+          titleStyle: TextStyle(
+            fontSize: fontSize,
+            fontWeight: isTouched ? FontWeight.bold : FontWeight.normal,
+            color: Colors.white,
+          ),
         ),
       );
       index++;
@@ -388,12 +399,60 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
     return SizedBox(
       height: 200,
-      child: PieChart(
-        PieChartData(
-          sections: pieSections,
-          centerSpaceRadius: 40,
-          sectionsSpace: 0,
-        ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          PieChart(
+            PieChartData(
+              pieTouchData: PieTouchData(
+                touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                  setState(() {
+                    if (!event.isInterestedForInteractions ||
+                        pieTouchResponse == null ||
+                        pieTouchResponse.touchedSection == null) {
+                      _touchedIndex = null;
+                      return;
+                    }
+                    final touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                    // Controllo che l'indice sia valido
+                    if (touchedIndex >= 0 && touchedIndex < labels.length) {
+                      _touchedIndex = touchedIndex;
+                    } else {
+                      _touchedIndex = null;
+                    }
+                  });
+                },
+              ),
+              sections: pieSections,
+              centerSpaceRadius: 40,
+              sectionsSpace: 0,
+            ),
+          ),
+          if (_touchedIndex != null && _touchedIndex! >= 0 && _touchedIndex! < labels.length)
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Text(
+                labels[_touchedIndex!],
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -407,6 +466,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
     final List<BarChartGroupData> barGroups = [];
     final List<String> labels = data.keys.toList();
+    
     for (int i = 0; i < labels.length; i++) {
       barGroups.add(
         BarChartGroupData(
@@ -440,6 +500,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       child: Text(
                         labels[index],
                         style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     );
                   }
@@ -456,32 +518,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           gridData: FlGridData(show: false),
           borderData: FlBorderData(show: false),
         ),
-      ),
-    );
-  }
-
-  Widget _buildLegendItem(String label, int value, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              '$label ($value)',
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -626,12 +662,4 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       default: return const Color(0xFFB71C1C);
     }
   }
-}
-
-// Classe helper per i dati dei grafici
-class ChartData {
-  final String name;
-  final double value;
-
-  ChartData(this.name, this.value);
 }
