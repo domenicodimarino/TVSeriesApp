@@ -51,7 +51,6 @@ class Series {
 
   Future<String> getLocalImagePath() async {
     if (!isLocalImage) return imageUrl;
-
     final Directory appDir = await getApplicationDocumentsDirectory();
     return path.join(appDir.path, 'images', imageUrl);
   }

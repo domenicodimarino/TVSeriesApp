@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'database_helper.dart';
 import 'series.dart';
 import 'series_screen.dart';
-import 'main.dart'; // Per il CustomFooter
+import 'widgets/series_image.dart'; // Assicurati che questo import sia presente
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -264,7 +264,13 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildSeriesTile(Series series) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: _buildSeriesImage(series.imageUrl),
+      // MODIFICA QUI: Usa SeriesImage per visualizzare l'immagine
+      leading: SeriesImage(
+        series: series,
+        width: 50,
+        height: 75,
+        borderRadius: BorderRadius.circular(8),
+      ),
       title: Text(
         series.title,
         style: const TextStyle(color: Colors.white, fontSize: 16),
@@ -312,24 +318,6 @@ class _SearchScreenState extends State<SearchScreen> {
       default:
         return Colors.grey.shade600;
     }
-  }
-
-  Widget _buildSeriesImage(String imageUrl) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Image.network(
-        imageUrl,
-        width: 50,
-        height: 75,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Container(
-          width: 50,
-          height: 75,
-          color: Colors.grey[800],
-          child: const Icon(Icons.broken_image, color: Colors.white70, size: 24),
-        ),
-      ),
-    );
   }
 
   void _navigateToSeriesDetail(Series series) {
