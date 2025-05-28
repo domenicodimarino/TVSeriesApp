@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'series.dart';
+import 'initial_series.dart';
 
 class DatabaseHelper {
   DatabaseHelper._privateConstructor();
@@ -75,56 +76,7 @@ class DatabaseHelper {
   }
 
   Future<void> _insertInitialData(Database db) async {
-    final initialSeries = [
-      Series(
-        title: 'Breaking Bad',
-        trama: 'Walter White, un professore di chimica delle superiori che si trasforma in un produttore di metanfetamine dopo aver scoperto di avere un cancro ai polmoni.',
-        genere: 'Drammatico, Crime',
-        stato: 'Da guardare',
-        piattaforma: 'Netflix',
-        imageUrl: 'https://image.tmdb.org/t/p/w500/ggFHVNu6YYI5L9pCfOacjizRGt.jpg',
-      ),
-      Series(
-        title: 'Stranger Things',
-        trama: 'Quando un ragazzo scompare, la sua città natale si ritrova al centro di un mistero che coinvolge esperimenti governativi segreti, forze soprannaturali terrificanti e una ragazzina molto strana.',
-        genere: 'Sci-Fi, Horror',
-        stato: 'Da guardare',
-        piattaforma: 'Netflix',
-        imageUrl: 'https://image.tmdb.org/t/p/w500/49WJfeN0moxb9IPfGn8AIqMGskD.jpg',
-      ),
-      Series(
-        title: 'The Mandalorian',
-        trama: 'Le avventure di un cacciatore di taglie mandaloriano nei confini esterni della galassia, lontano dall\'autorità della Nuova Repubblica.',
-        genere: 'Sci-Fi, Avventura',
-        stato: 'Da guardare',
-        piattaforma: 'Disney+',
-        imageUrl: 'https://image.tmdb.org/t/p/w500/sWgBv7LV2PRoQgkxwlibdGXKz1S.jpg',
-      ),
-      Series(
-        title: 'House of the Dragon',
-        trama: 'La saga della Casa Targaryen ambientata 200 anni prima degli eventi de Il Trono di Spade.',
-        genere: 'Fantasy, Drammatico',
-        stato: 'Da guardare',
-        piattaforma: 'HBO Max',
-        imageUrl: 'https://image.tmdb.org/t/p/w500/z2yahl2uefxDCl0nogcRBstwruJ.jpg',
-      ),
-      Series(
-        title: 'Wednesday',
-        trama: 'Segue Wednesday Addams come studentessa alla Nevermore Academy, dove tenta di padroneggiare le sue abilità psichiche emergenti.',
-        genere: 'Commedia, Horror',
-        stato: 'Da guardare',
-        piattaforma: 'Netflix',
-        imageUrl: 'https://image.tmdb.org/t/p/w500/9PFonBhy4cQy7Jz20NpMygczOkv.jpg',
-      ),
-      Series(
-        title: 'The Boys',
-        trama: 'Un gruppo di vigilanti si propone di abbattere dei supereroi corrotti che abusano delle loro superpotenze.',
-        genere: 'Azione, Drammatico',
-        stato: 'Da guardare',
-        piattaforma: 'Prime Video',
-        imageUrl: 'https://image.tmdb.org/t/p/w500/stTEycfG9928HYGEISBFaG1ngjM.jpg',
-      ),
-    ];
+    
 
     for (final series in initialSeries) {
       await insertSeries(series, db: db);
