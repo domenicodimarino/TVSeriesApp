@@ -368,17 +368,6 @@ class MovieGridDynamic extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  // Titolo della serie
-                  Text(
-                    s.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
                 ],
               ),
             ),
