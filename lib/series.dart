@@ -12,6 +12,10 @@ class Series {
   final String stato;
   final String piattaforma;
   final bool isFavorite;
+  final int totalEpisodes;
+  final int watchedEpisodes;
+  final DateTime? lastWatched;
+  final DateTime? dateAdded;
 
   const Series({
     this.id,
@@ -22,21 +26,29 @@ class Series {
     required this.stato,
     required this.piattaforma,
     this.isFavorite = false,
+    this.totalEpisodes = 1,
+    this.watchedEpisodes = 0,
+    this.lastWatched,
+    this.dateAdded,
   });
 
-  /// Determina se l'immagine è locale
   bool get isLocalImage {
     return imageUrl.isNotEmpty &&
         !imageUrl.startsWith('http') &&
-        !imageUrl.contains('/'); // Solo nome file, non percorso
+        !imageUrl.contains('/');
   }
 
-  /// Determina se l'immagine è remota (URL)
   bool get isRemoteImage {
     return imageUrl.startsWith('http');
   }
 
-  /// Ottiene il percorso completo dell'immagine locale
+  double get completionPercentage {
+    if (totalEpisodes == 0) return 0.0;
+    return (watchedEpisodes / totalEpisodes) * 100;
+  }
+
+  bool get isCompleted => watchedEpisodes >= totalEpisodes;
+
   Future<String> getLocalImagePath() async {
     if (!isLocalImage) return imageUrl;
 
@@ -44,7 +56,6 @@ class Series {
     return path.join(appDir.path, 'images', imageUrl);
   }
 
-  /// Crea una copia dell'oggetto Series con i campi specificati sovrascritti
   Series copyWith({
     int? id,
     String? imageUrl,
@@ -54,6 +65,10 @@ class Series {
     String? stato,
     String? piattaforma,
     bool? isFavorite,
+    int? totalEpisodes,
+    int? watchedEpisodes,
+    DateTime? lastWatched,
+    DateTime? dateAdded,
   }) {
     return Series(
       id: id ?? this.id,
@@ -64,10 +79,13 @@ class Series {
       stato: stato ?? this.stato,
       piattaforma: piattaforma ?? this.piattaforma,
       isFavorite: isFavorite ?? this.isFavorite,
+      totalEpisodes: totalEpisodes ?? this.totalEpisodes,
+      watchedEpisodes: watchedEpisodes ?? this.watchedEpisodes,
+      lastWatched: lastWatched ?? this.lastWatched,
+      dateAdded: dateAdded ?? this.dateAdded,
     );
   }
 
-  /// Converte l'oggetto Series in una mappa per il database
   Map<String, dynamic> toMap() {
     return {
       if (id != null) 'id': id,
@@ -78,10 +96,13 @@ class Series {
       'stato': stato,
       'piattaforma': piattaforma,
       'isFavorite': isFavorite ? 1 : 0,
+      'totalEpisodes': totalEpisodes,
+      'watchedEpisodes': watchedEpisodes,
+      'lastWatched': lastWatched?.millisecondsSinceEpoch,
+      'dateAdded': dateAdded?.millisecondsSinceEpoch,
     };
   }
 
-  /// Crea un oggetto Series da una mappa del database
   factory Series.fromMap(Map<String, dynamic> map) {
     return Series(
       id: map['id'] as int?,
@@ -92,10 +113,17 @@ class Series {
       stato: map['stato'] as String,
       piattaforma: map['piattaforma'] as String,
       isFavorite: (map['isFavorite'] as int) == 1,
+      totalEpisodes: map['totalEpisodes'] as int? ?? 1,
+      watchedEpisodes: map['watchedEpisodes'] as int? ?? 0,
+      lastWatched: map['lastWatched'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(map['lastWatched'] as int)
+          : null,
+      dateAdded: map['dateAdded'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(map['dateAdded'] as int)
+          : null,
     );
   }
 
-  /// Override del metodo toString per il debugging
   @override
   String toString() {
     return '''
@@ -106,11 +134,15 @@ Series {
   genere: "$genere",
   stato: "$stato",
   piattaforma: "$piattaforma",
-  isFavorite: $isFavorite
+  isFavorite: $isFavorite,
+  totalEpisodes: $totalEpisodes,
+  watchedEpisodes: $watchedEpisodes,
+  lastWatched: ${lastWatched?.toIso8601String()},
+  dateAdded: ${dateAdded?.toIso8601String()},
+  completionPercentage: ${completionPercentage.toStringAsFixed(1)}%
 }''';
   }
 
-  /// Override dell'operatore di uguaglianza per il confronto degli oggetti
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
@@ -123,10 +155,13 @@ Series {
             genere == other.genere &&
             stato == other.stato &&
             piattaforma == other.piattaforma &&
-            isFavorite == other.isFavorite);
+            isFavorite == other.isFavorite &&
+            totalEpisodes == other.totalEpisodes &&
+            watchedEpisodes == other.watchedEpisodes &&
+            lastWatched == other.lastWatched &&
+            dateAdded == other.dateAdded);
   }
 
-  /// Override di hashCode per il corretto funzionamento delle collezioni
   @override
   int get hashCode {
     return Object.hash(
@@ -138,6 +173,10 @@ Series {
       stato,
       piattaforma,
       isFavorite,
+      totalEpisodes,
+      watchedEpisodes,
+      lastWatched,
+      dateAdded,
     );
   }
 }

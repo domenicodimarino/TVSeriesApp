@@ -12,6 +12,8 @@ class AddEditSeriesScreen extends StatefulWidget {
 
   const AddEditSeriesScreen({super.key, this.existingSeries});
 
+  static const routeName = '/add-edit-series';
+
   @override
   State<AddEditSeriesScreen> createState() => _AddEditSeriesScreenState();
 }

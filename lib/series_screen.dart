@@ -15,6 +15,8 @@ class SeriesScreen extends StatefulWidget {
     required this.onSeriesUpdated,
   });
 
+      static const routeName = '/series';
+
   @override
   State<SeriesScreen> createState() => _SeriesScreenState();
 }

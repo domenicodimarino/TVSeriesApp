@@ -4,6 +4,7 @@ import 'series_screen.dart';
 import 'search_screen.dart';
 import 'add_edit_series_screen.dart';
 import 'database_helper.dart';
+import 'analytics_screen.dart';
 import 'widgets/series_image.dart';
 
 void main() => runApp(const LetterboxdApp());
@@ -24,7 +25,25 @@ class LetterboxdApp extends StatelessWidget {
           surfaceTintColor: Colors.transparent,
         ),
       ),
-      home: const DomflixHomePage(),
+      initialRoute: DomflixHomePage.routeName,
+      routes: {
+        DomflixHomePage.routeName: (context) => const DomflixHomePage(),
+        SearchScreen.routeName: (context) => const SearchScreen(),
+        AnalyticsScreen.routeName: (context) => const AnalyticsScreen(),
+        AddEditSeriesScreen.routeName: (context) => const AddEditSeriesScreen(),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == SeriesScreen.routeName) {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => SeriesScreen(
+              series: args['series'],
+              onSeriesUpdated: args['onSeriesUpdated'],
+            ),
+          );
+        }
+        return null;
+      },
     );
   }
 }
@@ -32,12 +51,13 @@ class LetterboxdApp extends StatelessWidget {
 class DomflixHomePage extends StatefulWidget {
   const DomflixHomePage({Key? key}) : super(key: key);
 
+  static const routeName = '/';
+
   @override
   State<DomflixHomePage> createState() => _DomflixHomePageState();
 }
 
 class _DomflixHomePageState extends State<DomflixHomePage> {
-
   // Carica le serie in corso
   Future<List<Series>> _loadInProgressSeries() async {
     final allSeries = await DatabaseHelper.instance.getAllSeries();
@@ -49,7 +69,7 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
     return await DatabaseHelper.instance.getFavoriteSeries();
   }
 
-  // Carica le serie da guardare (potrebbe piacerti)
+  // Carica le serie da guardare
   Future<List<Series>> _loadWatchLaterSeries() async {
     final allSeries = await DatabaseHelper.instance.getAllSeries();
     return allSeries.where((series) => series.stato == 'Da guardare').toList();
@@ -81,14 +101,14 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
         padding: const EdgeInsets.only(top: 8, left: 12, right: 12, bottom: 0),
         child: ListView(
           children: [
-
             // Sezione Preferiti
             const SectionTitle(title: "⭐ I tuoi preferiti"),
             FutureBuilder<List<Series>>(
               future: _loadFavoriteSeries(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                      child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
                   return const Text("Errore nel caricamento dei preferiti", 
@@ -111,7 +131,8 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
               future: _loadInProgressSeries(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                      child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
                   return const Text("Errore nel caricamento delle serie in corso",
@@ -128,13 +149,14 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
             ),
             const SizedBox(height: 24),
 
-            // Sezione Da guardare (Potrebbe piacerti)
+            // Sezione Da guardare
             const SectionTitle(title: "🎬 Potrebbe piacerti"),
             FutureBuilder<List<Series>>(
               future: _loadWatchLaterSeries(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                      child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
                   return const Text("Errore nel caricamento dei suggerimenti",
@@ -157,7 +179,8 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
               future: _loadCompletedSeries(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                      child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
                   return const Text("Errore nel caricamento delle serie completate",
@@ -190,7 +213,7 @@ class EmptySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 200, // Stessa altezza delle altre sezioni
+      height: 200,
       decoration: BoxDecoration(
         color: Colors.grey[900],
         borderRadius: BorderRadius.circular(8),
@@ -252,39 +275,37 @@ class MovieGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 200, // Altezza fissa per il contenitore
+      height: 200,
       child: ListView.builder(
-        scrollDirection: Axis.horizontal, // Scroll orizzontale
+        scrollDirection: Axis.horizontal,
         itemCount: movies.length,
         itemBuilder: (context, index) {
           final movie = movies[index];
           return Container(
-            width: 130, // Larghezza fissa per ogni elemento
-            margin: const EdgeInsets.only(right: 12), // Spazio tra gli elementi
+            width: 130,
+            margin: const EdgeInsets.only(right: 12),
             child: GestureDetector(
               onTap: () {
-                Navigator.push(
+                Navigator.pushNamed(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => SeriesScreen(
-                      series: Series(
-                        imageUrl: movie["image"]!,
-                        title: movie["title"]!,
-                        trama: "Trama di esempio per ${movie["title"]}",
-                        genere: "Genere di esempio",
-                        stato: "In corso",
-                        piattaforma: "Netflix",
-                        isFavorite: false
-                      ),
-                      onSeriesUpdated: onSeriesUpdated,
+                  SeriesScreen.routeName,
+                  arguments: {
+                    'series': Series(
+                      imageUrl: movie["image"]!,
+                      title: movie["title"]!,
+                      trama: "Trama di esempio per ${movie["title"]}",
+                      genere: "Genere di esempio",
+                      stato: "In corso",
+                      piattaforma: "Netflix",
+                      isFavorite: false
                     ),
-                  ),
+                    'onSeriesUpdated': onSeriesUpdated,
+                  },
                 );
               },
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Immagine del film/serie
                   Expanded(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
@@ -301,7 +322,6 @@ class MovieGrid extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  // Titolo del film/serie
                   Text(
                     movie["title"]!,
                     style: const TextStyle(
@@ -335,31 +355,29 @@ class MovieGridDynamic extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 200, // Altezza fissa per il contenitore
+      height: 200,
       child: ListView.builder(
-        scrollDirection: Axis.horizontal, // Scroll orizzontale
+        scrollDirection: Axis.horizontal,
         itemCount: series.length,
         itemBuilder: (context, index) {
           final s = series[index];
           return Container(
-            width: 130, // Larghezza fissa per ogni elemento
-            margin: const EdgeInsets.only(right: 12), // Spazio tra gli elementi
+            width: 130,
+            margin: const EdgeInsets.only(right: 12),
             child: GestureDetector(
               onTap: () {
-                Navigator.push(
+                Navigator.pushNamed(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => SeriesScreen(
-                      series: s,
-                      onSeriesUpdated: onSeriesUpdated,
-                    ),
-                  ),
+                  SeriesScreen.routeName,
+                  arguments: {
+                    'series': s,
+                    'onSeriesUpdated': onSeriesUpdated,
+                  },
                 );
               },
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Immagine della serie
                   Expanded(
                     child: SeriesImage(
                       series: s,
@@ -368,6 +386,16 @@ class MovieGridDynamic extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
+                  Text(
+                    s.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
@@ -388,71 +416,56 @@ class CustomFooter extends StatelessWidget {
       height: 64,
       color: const Color(0xFF23272F),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
+          IconButton(
+            icon: const Icon(Icons.home, color: Colors.white, size: 30),
+            onPressed: () {
+              if (ModalRoute.of(context)?.settings.name != DomflixHomePage.routeName) {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  DomflixHomePage.routeName,
+                  (route) => false,
+                );
+              }
+            },
+          ),
+          
           IconButton(
             icon: const Icon(Icons.add, color: Colors.white, size: 30),
             onPressed: () async {
-              final result = await Navigator.push(
+              final result = await Navigator.pushNamed(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const AddEditSeriesScreen(),
-                ),
+                AddEditSeriesScreen.routeName,
               );
               if (result == true) {
                 onSeriesAdded();
               }
             },
           ),
+          
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white, size: 30),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SearchScreen()),
-              );
-            },
-          ),
-          // Bottone di debug del database
-          IconButton(
-            icon: const Icon(Icons.storage, color: Colors.orange, size: 30),
-            onPressed: () async {
-              try {
-                String dbPath = await DatabaseHelper.instance.getDatabasePath();
-                print('Il tuo database si trova in: $dbPath');
-                
-                // Testa anche il contenuto
-                await DatabaseHelper.instance.printAllSeries();
-                
-                // Mostra una notifica all'utente
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Database info stampata nel console'),
-                    backgroundColor: Colors.orange,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              } catch (e) {
-                print('Errore nel debug del database: $e');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Errore: $e'),
-                    backgroundColor: Colors.red,
-                  ),
+              if (ModalRoute.of(context)?.settings.name != SearchScreen.routeName) {
+                Navigator.pushNamed(
+                  context,
+                  SearchScreen.routeName,
                 );
               }
             },
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: IconButton(
-              icon: Image.network(
-                "https://i.imgur.com/7jOfbHH.png",
-                width: 36,
-                height: 36,
-              ),
-              onPressed: () {},
-            ),
+          
+          IconButton(
+            icon: const Icon(Icons.analytics, color: Colors.white, size: 30),
+            onPressed: () {
+              if (ModalRoute.of(context)?.settings.name != AnalyticsScreen.routeName) {
+                Navigator.pushNamed(
+                  context,
+                  AnalyticsScreen.routeName,
+                );
+              }
+            },
           ),
         ],
       ),
