@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'main.dart';
 import 'series.dart';
 import 'database_helper.dart';
+import 'widgets/series_image.dart'; // Aggiungi questo import
 
 class SeriesScreen extends StatefulWidget {
   final Series series;
@@ -111,20 +112,11 @@ class _SeriesScreenState extends State<SeriesScreen> {
 
   Widget _buildSeriesImage() {
     return Center(
-      child: ClipRRect(
+      child: SeriesImage(
+        series: widget.series,
+        height: 260,
+        width: 180,
         borderRadius: BorderRadius.circular(12),
-        child: Image.network(
-          widget.series.imageUrl,
-          height: 260,
-          width: 180,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Container(
-            height: 260,
-            width: 180,
-            color: Colors.grey[800],
-            child: const Icon(Icons.broken_image, color: Colors.white70),
-          ),
-        ),
       ),
     );
   }

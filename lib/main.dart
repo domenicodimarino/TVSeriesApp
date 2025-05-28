@@ -4,6 +4,7 @@ import 'series_screen.dart';
 import 'search_screen.dart';
 import 'add_edit_series_screen.dart';
 import 'database_helper.dart';
+import 'widgets/series_image.dart'; // Aggiungi questo import
 
 void main() => runApp(const LetterboxdApp());
 
@@ -262,16 +263,9 @@ class MovieGridDynamic extends StatelessWidget {
               ),
             );
           },
-          child: ClipRRect(
+          child: SeriesImage(
+            series: s,
             borderRadius: BorderRadius.circular(10),
-            child: Image.network(
-              s.imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (c, e, s) => Container(
-                color: Colors.grey[800],
-                child: const Icon(Icons.broken_image, color: Colors.white),
-              ),
-            ),
           ),
         );
       },
@@ -312,6 +306,36 @@ class CustomFooter extends StatelessWidget {
                 context,
                 MaterialPageRoute(builder: (_) => const SearchScreen()),
               );
+            },
+          ),
+          // Bottone di debug del database
+          IconButton(
+            icon: const Icon(Icons.storage, color: Colors.orange, size: 30),
+            onPressed: () async {
+              try {
+                String dbPath = await DatabaseHelper.instance.getDatabasePath();
+                print('Il tuo database si trova in: $dbPath');
+                
+                // Testa anche il contenuto
+                await DatabaseHelper.instance.printAllSeries();
+                
+                // Mostra una notifica all'utente
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Database info stampata nel console'),
+                    backgroundColor: Colors.orange,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              } catch (e) {
+                print('Errore nel debug del database: $e');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Errore: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
           ),
           Padding(

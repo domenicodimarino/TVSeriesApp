@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import 'database_helper.dart';
 import 'series.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 class AddEditSeriesScreen extends StatefulWidget {
   final Series? existingSeries;
@@ -28,7 +32,11 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _tramaController = TextEditingController();
   final TextEditingController _genereController = TextEditingController();
-  final TextEditingController _imageController = TextEditingController();
+  final TextEditingController _urlController = TextEditingController();
+  
+  File? _selectedImage;
+  final ImagePicker _picker = ImagePicker();
+  bool _useLocalImage = false; // Toggle tra URL e immagine locale
 
   @override
   void initState() {
@@ -38,17 +46,66 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
       _titleController.text = widget.existingSeries!.title;
       _tramaController.text = widget.existingSeries!.trama;
       _genereController.text = widget.existingSeries!.genere;
-      _imageController.text = widget.existingSeries!.imageUrl;
       _selectedPiattaforma = widget.existingSeries!.piattaforma;
       _selectedStato = widget.existingSeries!.stato;
+      
+      // Determina se l'immagine esistente è locale o remota
+      if (widget.existingSeries!.isLocalImage) {
+        _useLocalImage = true;
+        _selectedImage = File(widget.existingSeries!.imageUrl);
+      } else {
+        _useLocalImage = false;
+        _urlController.text = widget.existingSeries!.imageUrl;
+      }
     } else {
       _selectedPiattaforma = _piattaforme.first;
       _selectedStato = _stati.first;
     }
   }
 
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        // Copia l'immagine nella directory dell'app
+        final Directory appDir = await getApplicationDocumentsDirectory();
+        final String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final String localPath = path.join(appDir.path, 'images', fileName);
+        
+        // Crea la directory se non esiste
+        await Directory(path.dirname(localPath)).create(recursive: true);
+        
+        // Copia il file
+        final File localFile = await File(image.path).copy(localPath);
+        
+        setState(() {
+          _selectedImage = localFile;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore nella selezione dell\'immagine: $e')),
+      );
+    }
+  }
+
   Future<void> _saveSeries() async {
     if (_formKey.currentState!.validate()) {
+      String imageUrl = '';
+      
+      if (_useLocalImage && _selectedImage != null) {
+        // Salva solo il nome del file, non il percorso completo
+        imageUrl = path.basename(_selectedImage!.path);
+      } else if (!_useLocalImage) {
+        imageUrl = _urlController.text;
+      }
+
       final newSeries = Series(
         id: widget.existingSeries?.id,
         title: _titleController.text,
@@ -56,7 +113,7 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
         genere: _genereController.text,
         stato: _selectedStato,
         piattaforma: _selectedPiattaforma,
-        imageUrl: _imageController.text,
+        imageUrl: imageUrl,
         isFavorite: widget.existingSeries?.isFavorite ?? false,
       );
 
@@ -108,11 +165,189 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
               _buildDropdown('Stato', _stati, _selectedStato, 
                   (value) => setState(() => _selectedStato = value!)),
               const SizedBox(height: 16),
-              _buildTextField(_imageController, 'URL Immagine', maxLines: 1),
+              _buildImageSourceToggle(),
+              const SizedBox(height: 16),
+              _useLocalImage ? _buildImageSelector() : _buildUrlField(),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildImageSourceToggle() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.white70),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Tipo di immagine',
+            style: TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: RadioListTile<bool>(
+                  title: const Text('URL', style: TextStyle(color: Colors.white)),
+                  value: false,
+                  groupValue: _useLocalImage,
+                  onChanged: (value) {
+                    setState(() {
+                      _useLocalImage = value!;
+                      if (!_useLocalImage) {
+                        _selectedImage = null;
+                      } else {
+                        _urlController.clear();
+                      }
+                    });
+                  },
+                  activeColor: const Color(0xFFB71C1C),
+                ),
+              ),
+              Expanded(
+                child: RadioListTile<bool>(
+                  title: const Text('Locale', style: TextStyle(color: Colors.white)),
+                  value: true,
+                  groupValue: _useLocalImage,
+                  onChanged: (value) {
+                    setState(() {
+                      _useLocalImage = value!;
+                      if (!_useLocalImage) {
+                        _selectedImage = null;
+                      } else {
+                        _urlController.clear();
+                      }
+                    });
+                  },
+                  activeColor: const Color(0xFFB71C1C),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUrlField() {
+    return _buildTextField(_urlController, 'URL Immagine', maxLines: 1);
+  }
+
+  Widget _buildImageSelector() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.white70),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Immagine serie',
+            style: TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              ElevatedButton.icon(
+                onPressed: _pickImage,
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Seleziona dalla galleria'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFB71C1C),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (_selectedImage != null)
+                ElevatedButton.icon(
+                  onPressed: () => setState(() => _selectedImage = null),
+                  icon: const Icon(Icons.delete),
+                  label: const Text('Rimuovi'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey[700],
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImagePreview() {
+    return Column(
+      children: [
+        if (_useLocalImage && _selectedImage != null)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.file(
+              _selectedImage!,
+              height: 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          )
+        else if (!_useLocalImage && _urlController.text.isNotEmpty)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              _urlController.text,
+              height: 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                height: 200,
+                color: Colors.grey[800],
+                child: const Icon(Icons.broken_image, color: Colors.white70),
+              ),
+            ),
+          )
+        else if (widget.existingSeries != null && widget.existingSeries!.imageUrl.isNotEmpty)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: widget.existingSeries!.isLocalImage
+                ? Image.file(
+                    File(widget.existingSeries!.imageUrl),
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 200,
+                      color: Colors.grey[800],
+                      child: const Icon(Icons.broken_image, color: Colors.white70),
+                    ),
+                  )
+                : Image.network(
+                    widget.existingSeries!.imageUrl,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 200,
+                      color: Colors.grey[800],
+                      child: const Icon(Icons.broken_image, color: Colors.white70),
+                    ),
+                  ),
+          )
+        else
+          Container(
+            height: 200,
+            color: Colors.grey[800],
+            child: const Center(
+              child: Text('Nessuna immagine selezionata', 
+                  style: TextStyle(color: Colors.white70)),
+            ),
+          ),
+      ],
     );
   }
 
@@ -160,37 +395,6 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
           isExpanded: true,
         ),
       ),
-    );
-  }
-
-  Widget _buildImagePreview() {
-    return Column(
-      children: [
-        if (_imageController.text.isNotEmpty)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              _imageController.text,
-              height: 200,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                height: 200,
-                color: Colors.grey[800],
-                child: const Icon(Icons.broken_image, color: Colors.white70),
-              ),
-            ),
-          ),
-        if (_imageController.text.isEmpty)
-          Container(
-            height: 200,
-            color: Colors.grey[800],
-            child: const Center(
-              child: Text('Anteprima immagine', 
-                  style: TextStyle(color: Colors.white70)),
-            ),
-          ),
-      ],
     );
   }
 }

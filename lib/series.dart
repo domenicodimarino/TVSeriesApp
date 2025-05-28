@@ -1,4 +1,7 @@
 import 'package:sqflite/sqflite.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
+import 'dart:io';
 
 class Series {
   final int? id;
@@ -20,6 +23,26 @@ class Series {
     required this.piattaforma,
     this.isFavorite = false,
   });
+
+  /// Determina se l'immagine è locale
+  bool get isLocalImage {
+    return imageUrl.isNotEmpty &&
+        !imageUrl.startsWith('http') &&
+        !imageUrl.contains('/'); // Solo nome file, non percorso
+  }
+
+  /// Determina se l'immagine è remota (URL)
+  bool get isRemoteImage {
+    return imageUrl.startsWith('http');
+  }
+
+  /// Ottiene il percorso completo dell'immagine locale
+  Future<String> getLocalImagePath() async {
+    if (!isLocalImage) return imageUrl;
+
+    final Directory appDir = await getApplicationDocumentsDirectory();
+    return path.join(appDir.path, 'images', imageUrl);
+  }
 
   /// Crea una copia dell'oggetto Series con i campi specificati sovrascritti
   Series copyWith({
