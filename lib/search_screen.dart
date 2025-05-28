@@ -17,6 +17,7 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<Series> _allSeries = [];
   List<Series> _filteredSeries = [];
+  bool _hasModified = false; // <--- aggiungi questa variabile
   
   // Filtro per stato
   String? _selectedStateFilter;
@@ -86,35 +87,62 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
+  void _navigateToSeriesDetail(Series series) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SeriesScreen(
+          series: series,
+          onSeriesUpdated: () {
+            _loadSeries();
+            _hasModified = true; // <--- segna che c'è stata una modifica
+          },
+        ),
+      ),
+    );
+    if (result == true) {
+      _hasModified = true;
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context, true);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFB71C1C),
-        title: TextField(
-          controller: _searchController,
-          autofocus: true,
-          decoration: InputDecoration(
-            hintText: 'Cerca per titolo, genere o piattaforma...',
-            hintStyle: const TextStyle(color: Colors.white70),
-            border: InputBorder.none,
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.clear, color: Colors.white70),
-              onPressed: _clearSearch,
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pop(context, _hasModified);
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFFB71C1C),
+          title: TextField(
+            controller: _searchController,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: 'Cerca per titolo, genere o piattaforma...',
+              hintStyle: const TextStyle(color: Colors.white70),
+              border: InputBorder.none,
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.clear, color: Colors.white70),
+                onPressed: _clearSearch,
+              ),
             ),
+            style: const TextStyle(color: Colors.white),
+            onChanged: _searchSeries,
           ),
-          style: const TextStyle(color: Colors.white),
-          onChanged: _searchSeries,
+          actions: [
+            _buildFilterButton(),
+          ],
         ),
-        actions: [
-          _buildFilterButton(),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildActiveFiltersBar(),
-          Expanded(child: _buildSearchResults()),
-        ],
+        body: Column(
+          children: [
+            _buildActiveFiltersBar(),
+            Expanded(child: _buildSearchResults()),
+          ],
+        ),
       ),
     );
   }
@@ -318,19 +346,5 @@ class _SearchScreenState extends State<SearchScreen> {
       default:
         return Colors.grey.shade600;
     }
-  }
-
-  void _navigateToSeriesDetail(Series series) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SeriesScreen(
-          series: series,
-          onSeriesUpdated: () {
-            _loadSeries(); // Ricarica i dati dopo le modifiche
-          },
-        ),
-      ),
-    );
   }
 }

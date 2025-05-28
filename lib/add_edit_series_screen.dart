@@ -138,13 +138,11 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
       final Uint8List heicBytes = await heicFile.readAsBytes();
 
       // Decodifica l'immagine usando il package image
-      // Questo package ha un supporto migliore per vari formati, incluso HEIC
       img.Image? originalImage = img.decodeImage(heicBytes);
 
       if (originalImage != null) {
         // Ricodifica l'immagine come JPEG
-        // Questo passaggio è cruciale per la corretta conversione del formato e dei colori
-        final List<int> jpegBytes = img.encodeJpg(originalImage, quality: 90); // Qualità 90 per buon compromesso
+        final List<int> jpegBytes = img.encodeJpg(originalImage, quality: 90);
 
         // Salva i byte JPEG nel nuovo file
         final File jpegFile = File(localJpegPath);
@@ -156,27 +154,10 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
         print('Immagine HEIC convertita e salvata come JPEG: $localJpegPath');
       } else {
         // Se la decodifica fallisce, prova una copia diretta come fallback
-        // (anche se questo probabilmente non risolverà i colori HEIC)
         print('Decodifica HEIC fallita. Tentativo di copia diretta.');
         await heicFile.saveTo(localJpegPath);
-         setState(() {
-          _selectedImage = File(localJpegPath);
-
-      
-      if (image != null) {
-        final Directory appDir = await getApplicationDocumentsDirectory();
-        final String imagesDir = path.join(appDir.path, 'images');
-        await Directory(imagesDir).create(recursive: true);
-        
-        final String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final String localPath = path.join(imagesDir, fileName);
-        
-        final File newImage = File(image.path);
-        final File savedImage = await newImage.copy(localPath);
-        
         setState(() {
-          _selectedImage = savedImage;
-
+          _selectedImage = File(localJpegPath);
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Formato immagine non supportato per la conversione colori.')),
@@ -191,45 +172,42 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
   }
 
   Future<void> _saveSeries() async {
+    setState(() => _isLoading = true);
+    try {
+      if (_formKey.currentState!.validate()) {
+        String imageUrlToSave = '';
+        if (_useLocalImage && _selectedImage != null) {
+          imageUrlToSave = path.basename(_selectedImage!.path);
+          print('Saving local image filename: $imageUrlToSave');
+        } else if (!_useLocalImage && _urlController.text.isNotEmpty) {
+          imageUrlToSave = _urlController.text;
+          print('Saving network image URL: $imageUrlToSave');
+        } else if (widget.existingSeries != null && widget.existingSeries!.imageUrl.isNotEmpty) {
+          imageUrlToSave = widget.existingSeries!.imageUrl;
+          print('Keeping existing image URL/path: $imageUrlToSave');
+        }
 
-    if (_formKey.currentState!.validate()) {
-      String imageUrlToSave = '';
-      if (_useLocalImage && _selectedImage != null) {
-        // Salva solo il nome file, non il path completo!
-        imageUrlToSave = path.basename(_selectedImage!.path);
-        print('Saving local image filename: $imageUrlToSave');
-      } else if (!_useLocalImage && _urlController.text.isNotEmpty) {
-        imageUrlToSave = _urlController.text; // URL di rete
-        print('Saving network image URL: $imageUrlToSave');
-      } else if (widget.existingSeries != null && widget.existingSeries!.imageUrl.isNotEmpty) {
-        // Se non è stata selezionata una nuova immagine e non è stato fornito un nuovo URL,
-        // mantieni l'immagine esistente.
-        imageUrlToSave = widget.existingSeries!.imageUrl;
-        print('Keeping existing image URL/path: $imageUrlToSave');
+        final newSeries = Series(
+          id: _currentEditingSeries?.id,
+          title: _titleController.text,
+          trama: _tramaController.text,
+          genere: _genereController.text,
+          stato: _selectedStato,
+          piattaforma: _selectedPiattaforma,
+          imageUrl: imageUrlToSave,
+          isFavorite: _currentEditingSeries?.isFavorite ?? false,
+          seasons: _currentEditingSeries?.seasons ?? [],
+          dateAdded: _currentEditingSeries?.dateAdded ?? DateTime.now(),
+        );
 
+        if (_currentEditingSeries != null) {
+          await DatabaseHelper.instance.updateSeries(newSeries);
+        } else {
+          await DatabaseHelper.instance.insertSeries(newSeries);
+        }
+
+        Navigator.pop(context, true);
       }
-
-      final newSeries = Series(
-        id: _currentEditingSeries?.id,
-        title: _titleController.text,
-        trama: _tramaController.text,
-        genere: _genereController.text,
-        stato: _selectedStato,
-        piattaforma: _selectedPiattaforma,
-
-        imageUrl: imageUrl,
-        isFavorite: _currentEditingSeries?.isFavorite ?? false,
-        seasons: _currentEditingSeries?.seasons ?? [],
-        dateAdded: _currentEditingSeries?.dateAdded ?? DateTime.now(),
-      );
-
-      if (_currentEditingSeries != null) {
-        await DatabaseHelper.instance.updateSeries(newSeries);
-      } else {
-        await DatabaseHelper.instance.insertSeries(newSeries);
-      }
-
-      Navigator.pop(context, true);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Errore nel salvataggio: $e')),

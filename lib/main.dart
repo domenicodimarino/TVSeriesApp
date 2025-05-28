@@ -475,12 +475,15 @@ class CustomFooter extends StatelessWidget {
           
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white, size: 30),
-            onPressed: () {
+            onPressed: () async {
               if (ModalRoute.of(context)?.settings.name != SearchScreen.routeName) {
-                Navigator.pushNamed(
+                final result = await Navigator.pushNamed(
                   context,
                   SearchScreen.routeName,
                 );
+                if (result == true) {
+                  onSeriesAdded();
+                }
               }
             },
           ),
