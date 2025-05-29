@@ -485,109 +485,67 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       );
     }
 
-    final List<BarChartGroupData> barGroups = [];
-    final List<String> labels = data.keys.toList();
-    final barHeight = 40.0;
+    final labels = data.keys.toList();
+    final values = data.values.toList();
+    final total = values.fold<int>(0, (sum, v) => sum + v);
+    final barHeight = 32.0;
 
-    for (int i = 0; i < labels.length; i++) {
-      barGroups.add(
-        BarChartGroupData(
-          x: i,
-          barRods: [
-            BarChartRodData(
-              toY: data[labels[i]]!.toDouble(),
-              color: const Color(0xFFB71C1C),
-              width: 18,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return SizedBox(
-      height: barHeight * labels.length,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Grafico a barre orizzontali
-          Expanded(
-            child: RotatedBox(
-              quarterTurns: 1,
-              child: SizedBox(
-                width: barHeight * labels.length,
-                height: 300,
-                child: BarChart(
-                  BarChartData(
-                    barGroups: barGroups,
-                    alignment: BarChartAlignment.spaceBetween,
-                    gridData: FlGridData(show: false),
-                    borderData: FlBorderData(show: false),
-                    barTouchData: BarTouchData(enabled: false),
-                    titlesData: FlTitlesData(
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (double value, TitleMeta meta) {
-                            final index = value.toInt();
-                            if (index >= 0 && index < labels.length) {
-                              return RotatedBox(
-                                quarterTurns: -1,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    labels[index],
-                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              );
-                            }
-                            return const Text('');
-                          },
-                          reservedSize: 80,
-                        ),
+    return Column(
+      children: List.generate(labels.length, (i) {
+        final percent = total == 0 ? 0.0 : (values[i] / total * 100);
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6.0),
+          child: Row(
+            children: [
+              // Label piattaforma
+              SizedBox(
+                width: 110,
+                child: Text(
+                  labels[i],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Barra
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: FractionallySizedBox(
+                    widthFactor: percent / 100,
+                    child: Container(
+                      height: barHeight,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFB71C1C),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     ),
-                    minY: 0,
-                    maxY: (data.values.isNotEmpty ? data.values.reduce((a, b) => a > b ? a : b) : 1).toDouble() + 1,
-                    groupsSpace: 16,
                   ),
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Colonna dei numeri accanto alle barre, allineata
-          SizedBox(
-            width: 56,
-            child: ListView.builder(
-              itemCount: data.values.length,
-              itemExtent: barHeight,
-              physics: const NeverScrollableScrollPhysics(),
-              itemBuilder: (context, index) {
-                final v = data.values.elementAt(index);
-                final total = _allSeries.length == 0 ? 1 : _allSeries.length;
-                final percent = (v / total * 100).toStringAsFixed(1);
-                return Center(
-                  child: Text(
-                    '$percent%',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
+              const SizedBox(width: 12),
+              // Percentuale
+              SizedBox(
+                width: 60,
+                child: Text(
+                  '${percent.toStringAsFixed(1)}%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
-                );
-              },
-            ),
+                  textAlign: TextAlign.right,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      }),
     );
   }
 
