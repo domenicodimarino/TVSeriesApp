@@ -465,11 +465,12 @@ class CustomFooter extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.home, color: Colors.white, size: 30),
             onPressed: () {
+              // Controlla se sei già sulla home per evitare di creare duplicati
               if (ModalRoute.of(context)?.settings.name != DomflixHomePage.routeName) {
-                Navigator.pushNamedAndRemoveUntil(
-                  context,
+                // Rimuovi tutto lo stack e vai alla home
+                Navigator.of(context).pushNamedAndRemoveUntil(
                   DomflixHomePage.routeName,
-                  (route) => false,
+                  (route) => false, // Rimuove tutte le routes esistenti
                 );
               }
             },
@@ -477,12 +478,15 @@ class CustomFooter extends StatelessWidget {
           
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white, size: 30),
-            onPressed: () async {
+            onPressed: () async {  // Aggiungi async qui
               if (ModalRoute.of(context)?.settings.name != SearchScreen.routeName) {
-                final result = await Navigator.pushNamed(
+                // Se non sei già sulla schermata di ricerca, vai lì
+                final result = await Navigator.pushNamed(  // Aggiungi await qui
                   context,
                   SearchScreen.routeName,
                 );
+                
+                // Aggiorna la home quando torni dalla ricerca con modifiche
                 if (result == true) {
                   onSeriesAdded();
                 }
@@ -505,24 +509,34 @@ class CustomFooter extends StatelessWidget {
           
           IconButton(
             icon: const Icon(Icons.category, color: Colors.white, size: 30),
-            onPressed: () {
+            onPressed: () async {  // Aggiungi async qui
               if (ModalRoute.of(context)?.settings.name != CategoriesScreen.routeName) {
-                Navigator.pushNamed(
+                final result = await Navigator.pushNamed(  // Aggiungi await qui
                   context,
                   CategoriesScreen.routeName,
                 );
+                
+                // Aggiorna la home quando torni dalle categorie con modifiche
+                if (result == true) {
+                  onSeriesAdded();
+                }
               }
             },
           ),
           
           IconButton(
             icon: const Icon(Icons.analytics, color: Colors.white, size: 30),
-            onPressed: () {
+            onPressed: () async {  // Aggiungi async qui
               if (ModalRoute.of(context)?.settings.name != AnalyticsScreen.routeName) {
-                Navigator.pushNamed(
+                final result = await Navigator.pushNamed(  // Aggiungi await qui
                   context,
                   AnalyticsScreen.routeName,
                 );
+                
+                // Aggiorna la home quando torni da analytics con modifiche
+                if (result == true) {
+                  onSeriesAdded();
+                }
               }
             },
           ),

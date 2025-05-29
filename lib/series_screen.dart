@@ -28,6 +28,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
   late String statoSelezionato;
   late bool isFavorite;
   final List<String> stati = ["In corso", "Completata", "Da guardare"];
+  bool _hasChanges = false; // Aggiungi questa variabile per tracciare le modifiche
 
   @override
   void initState() {
@@ -64,6 +65,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
       isFavorite ? Colors.green : Colors.red,
     );
 
+    _hasChanges = true; // Segna che ci sono state modifiche
     _refreshSeries();
   }
 
@@ -73,6 +75,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
     final updatedSeries = currentSeries.copyWith(stato: newState);
     await DatabaseHelper.instance.updateSeries(updatedSeries);
     
+    _hasChanges = true; // Segna che ci sono state modifiche
     _refreshSeries();
   }
 
@@ -103,6 +106,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
     final updatedSeries = currentSeries.copyWith(seasons: updatedSeasons);
     
     await DatabaseHelper.instance.updateSeries(updatedSeries);
+    _hasChanges = true; // Segna che ci sono state modifiche
     _refreshSeries();
   }
 
@@ -118,11 +122,22 @@ class _SeriesScreenState extends State<SeriesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _buildAppBar(),
-      body: _buildBody(),
-      bottomNavigationBar: CustomFooter(
-        onSeriesAdded: widget.onSeriesUpdated,
+    return WillPopScope(
+      onWillPop: () async {
+        if (_hasChanges) {
+          // Se ci sono state modifiche, ritorna true come risultato
+          // per far sapere alla schermata precedente che serve un refresh
+          Navigator.pop(context, true);
+          return false; // Impedisce il pop predefinito
+        }
+        return true; // Lascia gestire il pop normalmente
+      },
+      child: Scaffold(
+        appBar: _buildAppBar(),
+        body: _buildBody(),
+        bottomNavigationBar: CustomFooter(
+          onSeriesAdded: widget.onSeriesUpdated,
+        ),
       ),
     );
   }
@@ -225,8 +240,9 @@ class _SeriesScreenState extends State<SeriesScreen> {
         Colors.green,
       );
 
+      _hasChanges = true; // Segna che ci sono state modifiche
       widget.onSeriesUpdated();
-      Navigator.pop(context);
+      Navigator.pop(context, true); // Ritorna true quando elimini
     } catch (e) {
       _showSnackBar(
         'Errore durante l\'eliminazione: $e',

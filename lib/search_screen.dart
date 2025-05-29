@@ -101,23 +101,19 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _navigateToSeriesDetail(Series series) async {
-    final result = await Navigator.push(
+    final result = await Navigator.pushNamed(
       context,
-      MaterialPageRoute(
-        builder: (_) => SeriesScreen(
-          series: series,
-          onSeriesUpdated: () {
-            _loadSeries();
-            _hasModified = true; // <--- segna che c'è stata una modifica
-          },
-        ),
-      ),
+      SeriesScreen.routeName,
+      arguments: {
+        'series': series,
+        'onSeriesUpdated': _loadSeries,
+      },
     );
+    
+    // Se ci sono state modifiche, aggiorna ma NON fare un altro pop
     if (result == true) {
       _hasModified = true;
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context, true);
-      }
+      await _loadSeries();
     }
   }
 

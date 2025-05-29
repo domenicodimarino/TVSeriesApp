@@ -4,6 +4,26 @@ import 'series.dart';
 import 'series_screen.dart';
 import 'widgets/series_image.dart';
 
+const Map<String, String> genreEmojis = {
+  'drammatico': '🎭',
+  'crime': '🔍',
+  'commedia': '😂',
+  'sci-fi': '👽',
+  'azione': '💥',
+  'thriller': '🔪',
+  'fantasy': '🧙‍♂️',
+  'horror': '👻',
+  'avventura': '🗺️',
+  'romantico': '❤️',
+  'animazione': '🎬',
+  'mistero': '🕵️',
+  'storico': '📜',
+  'medico': '🏥',
+  'reality': '📹',
+  'cucina': '🍳',
+  'sport': '🏆',
+};
+
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key});
 
@@ -16,6 +36,7 @@ class CategoriesScreen extends StatefulWidget {
 class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = true;
+  bool _hasChanges = false; // Aggiungi questa variabile
   
   // Categorie e serie
   Map<String, List<Series>> _genreSeriesMap = {};
@@ -184,44 +205,54 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
   }
 
   void _refreshSeries() {
+    _hasChanges = true; // Segna che ci sono state modifiche
     _loadCategories();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFB71C1C),
-        title: const Text('Categorie', style: TextStyle(color: Colors.white)),
-        centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          tabs: const [
-            Tab(
-              icon: Icon(Icons.category, color: Colors.white),
-              text: 'Generi',
-            ),
-            Tab(
-              icon: Icon(Icons.tv, color: Colors.white),
-              text: 'Piattaforme',
-            ),
-          ],
+    return WillPopScope(
+      onWillPop: () async {
+        if (_hasChanges) {
+          Navigator.pop(context, true); // Propaga le modifiche alla home
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFFB71C1C),
+          title: const Text('Categorie', style: TextStyle(color: Colors.white)),
+          centerTitle: true,
+          bottom: TabBar(
+            controller: _tabController,
+            indicatorColor: Colors.white,
+            tabs: const [
+              Tab(
+                icon: Icon(Icons.category, color: Colors.white),
+                text: 'Generi',
+              ),
+              Tab(
+                icon: Icon(Icons.tv, color: Colors.white),
+                text: 'Piattaforme',
+              ),
+            ],
+          ),
         ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildGenreTab(),
-                _buildPlatformTab(),
-              ],
-            ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFFB71C1C),
-        onPressed: () => _addCustomCategory(_tabController.index == 0),
-        child: const Icon(Icons.add, color: Colors.white),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildGenreTab(),
+                  _buildPlatformTab(),
+                ],
+              ),
+        floatingActionButton: FloatingActionButton(
+          backgroundColor: const Color(0xFFB71C1C),
+          onPressed: () => _addCustomCategory(_tabController.index == 0),
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
       ),
     );
   }
@@ -321,6 +352,19 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
   }
 
   Widget _buildSectionTitle(String title, int count, bool isCustom, bool isGenre) {
+    // Aggiungi l'emoji al titolo solo per i generi predefiniti (non personalizzati)
+    String displayTitle = title;
+    if (isGenre && !isCustom) {
+      // Cerca l'emoji per questo genere (case insensitive)
+      final lowercaseTitle = title.toLowerCase();
+      final emoji = genreEmojis[lowercaseTitle];
+      
+      // Aggiungi l'emoji se trovata
+      if (emoji != null) {
+        displayTitle = '$emoji $title';
+      }
+    }
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0, left: 4),
       child: Row(
@@ -330,7 +374,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  displayTitle,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 20,
@@ -491,8 +535,8 @@ class MovieGridDynamic extends StatelessWidget {
             width: imageWidth,
             margin: const EdgeInsets.only(right: 12),
             child: GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(
+              onTap: () async {
+                final result = await Navigator.pushNamed(
                   context,
                   SeriesScreen.routeName,
                   arguments: {
@@ -500,6 +544,11 @@ class MovieGridDynamic extends StatelessWidget {
                     'onSeriesUpdated': onSeriesUpdated,
                   },
                 );
+                
+                // Aggiorna i dati quando torni dalla schermata della serie
+                if (result == true) {
+                  onSeriesUpdated();
+                }
               },
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
