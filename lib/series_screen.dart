@@ -268,25 +268,30 @@ class _SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildSeriesImage() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final imageWidth = screenWidth < 400 ? 150.0 : (screenWidth < 600 ? 200.0 : 240.0);
+    final imageHeight = screenWidth < 400 ? 220.0 : (screenWidth < 600 ? 300.0 : 360.0);
+
     return Center(
       child: SeriesImage(
         series: currentSeries,
-        height: 260,
-        width: 180,
+        width: imageWidth,
+        height: imageHeight,
         borderRadius: BorderRadius.circular(12),
       ),
     );
   }
 
   Widget _buildTitleRow() {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Row(
       children: [
         Expanded(
           child: Text(
             currentSeries.title,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 26,
+              fontSize: screenWidth < 400 ? 20 : (screenWidth < 600 ? 24 : 26),
               color: Colors.white,
             ),
           ),
@@ -295,7 +300,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
           icon: Icon(
             isFavorite ? Icons.favorite : Icons.favorite_border,
             color: isFavorite ? Colors.red : Colors.white70,
-            size: 32,
+            size: screenWidth < 400 ? 26 : 32,
           ),
           onPressed: _toggleFavorite,
         ),
@@ -304,20 +309,21 @@ class _SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildInfoRow(String label, String value) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Row(
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 16,
+          style: TextStyle(
+            fontSize: screenWidth < 400 ? 13 : 16,
             color: Colors.white70,
           ),
         ),
         const SizedBox(width: 8),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 16,
+          style: TextStyle(
+            fontSize: screenWidth < 400 ? 13 : 16,
             color: Colors.white,
           ),
         ),
@@ -326,20 +332,21 @@ class _SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildProgressInfo() {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Row(
       children: [
-        const Text(
+        Text(
           "Progresso:",
           style: TextStyle(
-            fontSize: 16,
+            fontSize: screenWidth < 400 ? 13 : 16,
             color: Colors.white70,
           ),
         ),
         const SizedBox(width: 8),
         Text(
           "${currentSeries.watchedEpisodes}/${currentSeries.totalEpisodes} episodi",
-          style: const TextStyle(
-            fontSize: 16,
+          style: TextStyle(
+            fontSize: screenWidth < 400 ? 13 : 16,
             color: Colors.white,
           ),
         ),
@@ -348,12 +355,13 @@ class _SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildStateDropdown() {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Row(
       children: [
-        const Text(
+        Text(
           "Stato:",
           style: TextStyle(
-            fontSize: 16,
+            fontSize: screenWidth < 400 ? 13 : 16,
             color: Colors.white70,
           ),
         ),
@@ -361,7 +369,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
         DropdownButton<String>(
           value: statoSelezionato,
           dropdownColor: const Color(0xFF181c23),
-          style: const TextStyle(color: Colors.white, fontSize: 16),
+          style: TextStyle(color: Colors.white, fontSize: screenWidth < 400 ? 13 : 16),
           underline: Container(),
           items: stati.map((String value) {
             return DropdownMenuItem<String>(
@@ -378,22 +386,23 @@ class _SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildPlotSection() {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "Trama:",
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: screenWidth < 400 ? 15 : 18,
             color: Colors.white,
           ),
         ),
         const SizedBox(height: 4),
         Text(
           currentSeries.trama,
-          style: const TextStyle(
-            fontSize: 16,
+          style: TextStyle(
+            fontSize: screenWidth < 400 ? 13 : 16,
             color: Colors.white,
           ),
         ),
@@ -405,13 +414,16 @@ class _SeriesScreenState extends State<SeriesScreen> {
               Icons.playlist_add,
               color: Colors.white,
             ),
-            label: const Text(
+            label: Text(
               "Gestisci Stagioni ed Episodi",
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white, fontSize: screenWidth < 400 ? 13 : 16),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFB71C1C),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: EdgeInsets.symmetric(
+                horizontal: screenWidth < 400 ? 12 : 20,
+                vertical: screenWidth < 400 ? 8 : 12,
+              ),
             ),
           ),
         ),
@@ -446,9 +458,13 @@ class _SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildSeasonCard(Season season, int seasonIndex) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Card(
       color: const Color(0xFF23272F),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: EdgeInsets.symmetric(
+        horizontal: screenWidth < 400 ? 8 : 16,
+        vertical: screenWidth < 400 ? 4 : 8,
+      ),
       child: ExpansionTile(
         leading: Checkbox(
           value: season.isCompleted,
@@ -456,11 +472,18 @@ class _SeriesScreenState extends State<SeriesScreen> {
         ),
         title: Text(
           season.name,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: screenWidth < 400 ? 14 : 16,
+          ),
         ),
         subtitle: Text(
           '${season.episodes.where((e) => e.watched).length}/${season.episodes.length} episodi visti',
-          style: const TextStyle(color: Colors.white70),
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: screenWidth < 400 ? 12 : 14,
+          ),
         ),
         children: [
           ...season.episodes.mapIndexed((episodeIndex, episode) {
@@ -472,6 +495,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
   }
 
   Widget _buildEpisodeTile(Episode episode, int seasonIndex, int episodeIndex) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return ListTile(
       leading: Checkbox(
         value: episode.watched,
@@ -481,12 +505,16 @@ class _SeriesScreenState extends State<SeriesScreen> {
         episode.title,
         style: TextStyle(
           color: Colors.white,
+          fontSize: screenWidth < 400 ? 13 : 15,
           decoration: episode.watched ? TextDecoration.lineThrough : null,
         ),
       ),
       subtitle: Text(
         "Episodio ${episode.episodeNumber}",
-        style: const TextStyle(color: Colors.white70),
+        style: TextStyle(
+          color: Colors.white70,
+          fontSize: screenWidth < 400 ? 11 : 13,
+        ),
       ),
     );
   }

@@ -20,10 +20,16 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final logoHeight = screenWidth < 400 ? 80.0 : (screenWidth < 600 ? 120.0 : 160.0);
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Center(
-        child: Image.asset('assets/domflix_logo_nobg.png', height: 120),
+        child: Image.asset(
+          'assets/domflix_logo_nobg.png',
+          height: logoHeight,
+        ),
       ),
     );
   }

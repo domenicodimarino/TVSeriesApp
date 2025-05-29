@@ -243,8 +243,13 @@ class EmptySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final height = screenWidth < 400 ? 120.0 : 200.0;
+    final iconSize = screenWidth < 400 ? 24.0 : 32.0;
+    final fontSize = screenWidth < 400 ? 12.0 : 14.0;
+
     return Container(
-      height: 200,
+      height: height,
       decoration: BoxDecoration(
         color: Colors.grey[900],
         borderRadius: BorderRadius.circular(8),
@@ -257,14 +262,14 @@ class EmptySection extends StatelessWidget {
             Icon(
               Icons.movie_outlined,
               color: Colors.grey[600],
-              size: 32,
+              size: iconSize,
             ),
             const SizedBox(height: 8),
             Text(
               message,
               style: TextStyle(
                 color: Colors.grey[600],
-                fontSize: 14,
+                fontSize: fontSize,
               ),
               textAlign: TextAlign.center,
             ),
@@ -305,15 +310,18 @@ class MovieGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth = screenWidth < 400 ? 90.0 : (screenWidth < 600 ? 110.0 : 130.0);
+
     return SizedBox(
-      height: 200,
+      height: cardWidth * 1.5,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: movies.length,
         itemBuilder: (context, index) {
           final movie = movies[index];
           return Container(
-            width: 130,
+            width: cardWidth,
             margin: const EdgeInsets.only(right: 12),
             child: GestureDetector(
               onTap: () {
@@ -342,10 +350,10 @@ class MovieGrid extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                       child: Image.network(
                         movie["image"]!,
-                        width: 130,
+                        width: cardWidth,
                         fit: BoxFit.cover,
                         errorBuilder: (c, e, s) => Container(
-                          width: 130,
+                          width: cardWidth,
                           color: Colors.grey[800],
                           child: const Icon(Icons.broken_image, color: Colors.white70),
                         ),
@@ -355,9 +363,9 @@ class MovieGrid extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     movie["title"]!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: screenWidth < 400 ? 10 : 12,
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 2,
@@ -385,15 +393,19 @@ class MovieGridDynamic extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final imageWidth = screenWidth < 400 ? 150.0 : (screenWidth < 600 ? 200.0 : 240.0);
+    final imageHeight = screenWidth < 400 ? 220.0 : (screenWidth < 600 ? 300.0 : 360.0);
+
     return SizedBox(
-      height: 200,
+      height: imageHeight + 40, // spazio per il titolo
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: series.length,
         itemBuilder: (context, index) {
           final s = series[index];
           return Container(
-            width: 130,
+            width: imageWidth,
             margin: const EdgeInsets.only(right: 12),
             child: GestureDetector(
               onTap: () {
@@ -409,19 +421,18 @@ class MovieGridDynamic extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: SeriesImage(
-                      series: s,
-                      width: 130,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                  SeriesImage(
+                    series: s,
+                    width: imageWidth,
+                    height: imageHeight,
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     s.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: screenWidth < 400 ? 12 : 14,
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 2,

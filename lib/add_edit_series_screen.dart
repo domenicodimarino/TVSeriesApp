@@ -293,6 +293,14 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final horizontalPadding = screenWidth < 400 ? 8.0 : 16.0;
+    final verticalPadding = screenWidth < 400 ? 8.0 : 16.0;
+    final imageHeight = screenWidth < 400 ? 120.0 : (screenWidth < 600 ? 160.0 : 200.0);
+    final fieldFontSize = screenWidth < 400 ? 13.0 : 16.0;
+    final labelFontSize = screenWidth < 400 ? 14.0 : 16.0;
+    final buttonFontSize = screenWidth < 400 ? 13.0 : 16.0;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFFB71C1C),
@@ -312,31 +320,33 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
               child: Form(
                 key: _formKey,
                 child: ListView(
                   children: [
-                    _buildImagePreview(),
-                    const SizedBox(height: 20),
-                    _buildTextField(_titleController, 'Titolo', maxLines: 1),
-                    const SizedBox(height: 16),
-                    _buildTextField(_tramaController, 'Trama', maxLines: 5),
-                    const SizedBox(height: 16),
-                    _buildTextField(_genereController, 'Genere', maxLines: 1),
-                    const SizedBox(height: 16),
+                    _buildImagePreview(imageHeight),
+                    SizedBox(height: verticalPadding),
+                    _buildTextField(_titleController, 'Titolo', maxLines: 1, fontSize: fieldFontSize, labelFontSize: labelFontSize),
+                    SizedBox(height: verticalPadding),
+                    _buildTextField(_tramaController, 'Trama', maxLines: 5, fontSize: fieldFontSize, labelFontSize: labelFontSize),
+                    SizedBox(height: verticalPadding),
+                    _buildTextField(_genereController, 'Genere', maxLines: 1, fontSize: fieldFontSize, labelFontSize: labelFontSize),
+                    SizedBox(height: verticalPadding),
                     _buildDropdown('Piattaforma', _piattaforme, _selectedPiattaforma, 
-                        (value) => setState(() => _selectedPiattaforma = value!)),
-                    const SizedBox(height: 16),
+                        (value) => setState(() => _selectedPiattaforma = value!), fontSize: fieldFontSize, labelFontSize: labelFontSize),
+                    SizedBox(height: verticalPadding),
                     _buildDropdown('Stato', _stati, _selectedStato, 
-                        (value) => setState(() => _selectedStato = value!)),
-                    const SizedBox(height: 16),
-                    _buildImageSourceToggle(),
-                    const SizedBox(height: 16),
-                    _useLocalImage ? _buildImageSelector() : _buildUrlField(),
-                    const SizedBox(height: 24),
+                        (value) => setState(() => _selectedStato = value!), fontSize: fieldFontSize, labelFontSize: labelFontSize),
+                    SizedBox(height: verticalPadding),
+                    _buildImageSourceToggle(labelFontSize: labelFontSize, buttonFontSize: buttonFontSize, padding: horizontalPadding),
+                    SizedBox(height: verticalPadding),
+                    _useLocalImage 
+                      ? _buildImageSelector(buttonFontSize: buttonFontSize, padding: horizontalPadding)
+                      : _buildUrlField(fontSize: fieldFontSize, labelFontSize: labelFontSize),
+                    SizedBox(height: verticalPadding + 8),
                     if (_currentEditingSeries != null) 
-                      _buildManageSeasonsButton(),
+                      _buildManageSeasonsButton(buttonFontSize: buttonFontSize, padding: horizontalPadding),
                   ],
                 ),
               ),
@@ -344,153 +354,46 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
     );
   }
 
-  Widget _buildManageSeasonsButton() {
-    return ElevatedButton.icon(
-      onPressed: _manageSeasons,
-      icon: const Icon(
-        Icons.playlist_add,
-        color: Colors.white,
-      ),
-      label: const Text(
-              "Gestisci Stagioni ed Episodi",
-              style: TextStyle(color: Colors.white),
-            ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFB71C1C),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-      ),
-    );
-  }
+  Widget _buildImagePreview(double imageHeight) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final imageWidth = screenWidth < 400 ? 150.0 : (screenWidth < 600 ? 200.0 : 240.0);
+    final imageHeightFixed = screenWidth < 400 ? 220.0 : (screenWidth < 600 ? 300.0 : 360.0);
 
-  Widget _buildImageSourceToggle() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.white70),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Tipo di immagine',
-            style: TextStyle(color: Colors.white70, fontSize: 16),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: RadioListTile<bool>(
-                  title: const Text('URL', style: TextStyle(color: Colors.white)),
-                  value: false,
-                  groupValue: _useLocalImage,
-                  onChanged: (value) => setState(() => _useLocalImage = value!),
-                  activeColor: const Color(0xFFB71C1C),
-                ),
-              ),
-              Expanded(
-                child: RadioListTile<bool>(
-                  title: const Text('Locale', style: TextStyle(color: Colors.white)),
-                  value: true,
-                  groupValue: _useLocalImage,
-                  onChanged: (value) => setState(() => _useLocalImage = value!),
-                  activeColor: const Color(0xFFB71C1C),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUrlField() {
-    return _buildTextField(_urlController, 'URL Immagine', maxLines: 1);
-  }
-
-  Widget _buildImageSelector() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.white70),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Immagine serie',
-            style: TextStyle(color: Colors.white70, fontSize: 16),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: ElevatedButton.icon(
-                  onPressed: _pickImage,
-                  icon: const Icon(Icons.photo_library),
-                  label: const Text('Seleziona immagine'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFB71C1C),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
-              ),
-              if (_selectedImage != null) ...[
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 1,
-                  child: ElevatedButton.icon(
-                    onPressed: () => setState(() => _selectedImage = null),
-                    icon: const Icon(Icons.delete),
-                    label: const Text('Rimuovi'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[700],
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildImagePreview() {
     Widget imageWidget;
-    
     if (_useLocalImage && _selectedImage != null) {
-      imageWidget = Image.file(_selectedImage!, fit: BoxFit.cover);
+      imageWidget = ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.file(
+          _selectedImage!,
+          width: imageWidth,
+          height: imageHeightFixed,
+          fit: BoxFit.cover,
+        ),
+      );
     } else if (!_useLocalImage && _urlController.text.isNotEmpty) {
-      imageWidget = Image.network(
-        _urlController.text,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+      imageWidget = ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          _urlController.text,
+          width: imageWidth,
+          height: imageHeightFixed,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+        ),
       );
     } else if (_currentEditingSeries != null && _currentEditingSeries!.imageUrl.isNotEmpty) {
       imageWidget = SeriesImage(
         series: _currentEditingSeries!,
-        height: 200,
-        width: double.infinity,
-        borderRadius: BorderRadius.circular(8),
+        width: imageWidth,
+        height: imageHeightFixed,
+        borderRadius: BorderRadius.circular(12),
       );
     } else {
       imageWidget = _buildPlaceholder();
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        height: 200,
-        width: double.infinity,
-        color: Colors.grey[900],
-        child: imageWidget,
-      ),
+    return Center(
+      child: imageWidget,
     );
   }
 
@@ -508,14 +411,14 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, {int? maxLines}) {
+  Widget _buildTextField(TextEditingController controller, String label, {int? maxLines, double? fontSize, double? labelFontSize}) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.white, fontSize: fontSize),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.white70),
+        labelStyle: TextStyle(color: Colors.white70, fontSize: labelFontSize),
         border: const OutlineInputBorder(),
         enabledBorder: const OutlineInputBorder(
           borderSide: BorderSide(color: Colors.white70),
@@ -533,11 +436,11 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
     );
   }
 
-  Widget _buildDropdown(String label, List<String> items, String value, ValueChanged<String?> onChanged) {
+  Widget _buildDropdown(String label, List<String> items, String value, ValueChanged<String?> onChanged, {double? fontSize, double? labelFontSize}) {
     return InputDecorator(
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.white70),
+        labelStyle: TextStyle(color: Colors.white70, fontSize: labelFontSize),
         border: const OutlineInputBorder(),
         enabledBorder: const OutlineInputBorder(
           borderSide: BorderSide(color: Colors.white70),
@@ -550,16 +453,133 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
         child: DropdownButton<String>(
           value: value,
           dropdownColor: const Color(0xFF181c23),
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.white, fontSize: fontSize),
           items: items.map((String value) {
             return DropdownMenuItem<String>(
               value: value,
-              child: Text(value),
+              child: Text(value, style: TextStyle(fontSize: fontSize)),
             );
           }).toList(),
           onChanged: onChanged,
           isExpanded: true,
         ),
+      ),
+    );
+  }
+
+  Widget _buildImageSourceToggle({double? labelFontSize, double? buttonFontSize, double? padding}) {
+    return Container(
+      padding: EdgeInsets.all(padding ?? 16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.white70),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Tipo di immagine',
+            style: TextStyle(color: Colors.white70, fontSize: labelFontSize),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: RadioListTile<bool>(
+                  title: Text('URL', style: TextStyle(color: Colors.white, fontSize: buttonFontSize)),
+                  value: false,
+                  groupValue: _useLocalImage,
+                  onChanged: (value) => setState(() => _useLocalImage = value!),
+                  activeColor: const Color(0xFFB71C1C),
+                ),
+              ),
+              Expanded(
+                child: RadioListTile<bool>(
+                  title: Text('Locale', style: TextStyle(color: Colors.white, fontSize: buttonFontSize)),
+                  value: true,
+                  groupValue: _useLocalImage,
+                  onChanged: (value) => setState(() => _useLocalImage = value!),
+                  activeColor: const Color(0xFFB71C1C),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageSelector({double? buttonFontSize, double? padding}) {
+    return Container(
+      padding: EdgeInsets.all(padding ?? 16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.white70),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Immagine serie',
+            style: TextStyle(color: Colors.white70, fontSize: buttonFontSize),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: ElevatedButton.icon(
+                  onPressed: _pickImage,
+                  icon: const Icon(Icons.photo_library),
+                  label: Text('Seleziona immagine', style: TextStyle(fontSize: buttonFontSize)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFB71C1C),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              if (_selectedImage != null) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 1,
+                  child: ElevatedButton.icon(
+                    onPressed: () => setState(() => _selectedImage = null),
+                    icon: const Icon(Icons.delete),
+                    label: Text('Rimuovi', style: TextStyle(fontSize: buttonFontSize)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[700],
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUrlField({double? fontSize, double? labelFontSize}) {
+    return _buildTextField(_urlController, 'URL Immagine', maxLines: 1, fontSize: fontSize, labelFontSize: labelFontSize);
+  }
+
+  Widget _buildManageSeasonsButton({double? buttonFontSize, double? padding}) {
+    return ElevatedButton.icon(
+      onPressed: _manageSeasons,
+      icon: const Icon(
+        Icons.playlist_add,
+        color: Colors.white,
+      ),
+      label: Text(
+        "Gestisci Stagioni ed Episodi",
+        style: TextStyle(color: Colors.white, fontSize: buttonFontSize),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFFB71C1C),
+        padding: EdgeInsets.symmetric(vertical: padding ?? 16),
       ),
     );
   }

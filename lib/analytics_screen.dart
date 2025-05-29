@@ -157,13 +157,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   Widget _buildGeneralStatsSection() {
     final stats = _generalStats;
-    
+    final screenWidth = MediaQuery.of(context).size.width;
+    final crossAxisCount = screenWidth < 500 ? 2 : 4;
+
     return _buildSection(
       title: '📊 Statistiche generali',
       child: GridView.count(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        crossAxisCount: 2,
+        crossAxisCount: crossAxisCount,
         childAspectRatio: 1.5,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
@@ -280,25 +282,28 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildSection({required String title, required Widget child}) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final padding = screenWidth < 400 ? 8.0 : 16.0;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFF23272F),
         borderRadius: BorderRadius.circular(12),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(padding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 18,
+              fontSize: screenWidth < 400 ? 16 : 18,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: padding),
           child,
         ],
       ),
@@ -341,9 +346,17 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildChartContainer({required String title, required Widget child}) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final horizontalPadding = screenWidth < 400 ? 8.0 : 16.0;
+    final verticalPadding = screenWidth < 400 ? 8.0 : 12.0;
+    final titleFontSize = screenWidth < 400 ? 12.0 : 14.0;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: verticalPadding,
+      ),
       decoration: BoxDecoration(
         color: const Color(0xFF181c23),
         borderRadius: BorderRadius.circular(8),
@@ -353,13 +366,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 14,
+              fontSize: titleFontSize,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: verticalPadding),
           child,
         ],
       ),
@@ -407,7 +420,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     });
 
     return SizedBox(
-      height: 200,
+      height: MediaQuery.of(context).size.width < 400 ? 160 : 220,
       child: Stack(
         alignment: Alignment.center,
         children: [

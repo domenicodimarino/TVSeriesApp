@@ -179,14 +179,17 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildActiveFiltersBar() {
-    // Mostra la barra dei filtri attivi solo se c'è un filtro applicato
+    final screenWidth = MediaQuery.of(context).size.width;
+    final horizontalPadding = screenWidth < 400 ? 8.0 : 16.0;
+    final verticalPadding = screenWidth < 400 ? 4.0 : 8.0;
+
     if (_selectedStateFilter == null || _selectedStateFilter == "Tutti") {
       return const SizedBox.shrink();
     }
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
       color: const Color(0xFF23272F),
       child: Row(
         children: [
@@ -196,7 +199,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: EdgeInsets.symmetric(horizontal: screenWidth < 400 ? 8 : 12, vertical: 4),
             decoration: BoxDecoration(
               color: const Color(0xFFB71C1C),
               borderRadius: BorderRadius.circular(16),
@@ -227,6 +230,9 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildSearchResults() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final horizontalPadding = screenWidth < 400 ? 8.0 : 16.0;
+
     if (_filteredSeries.isEmpty && _allSeries.isNotEmpty) {
       return Center(
         child: Column(
@@ -281,57 +287,82 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     return ListView.builder(
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 8),
       itemCount: _filteredSeries.length,
       itemBuilder: (context, index) {
         final series = _filteredSeries[index];
-        return _buildSeriesTile(series);
+        return _buildSeriesTile(series, screenWidth);
       },
     );
   }
 
-  Widget _buildSeriesTile(Series series) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      // MODIFICA QUI: Usa SeriesImage per visualizzare l'immagine
-      leading: SeriesImage(
-        series: series,
-        width: 50,
-        height: 75,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      title: Text(
-        series.title,
-        style: const TextStyle(color: Colors.white, fontSize: 16),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildSeriesTile(Series series, double screenWidth) {
+    final imageWidth = screenWidth < 400 ? 80.0 : (screenWidth < 600 ? 100.0 : 120.0);
+    final imageHeight = screenWidth < 400 ? 110.0 : (screenWidth < 600 ? 140.0 : 170.0);
+    final containerHeight = imageHeight + 20;
+    final horizontalPadding = screenWidth < 400 ? 8.0 : 16.0;
+    final verticalPadding = screenWidth < 400 ? 8.0 : 12.0;
+
+    return Container(
+      height: containerHeight,
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            '${series.genere} • ${series.piattaforma}',
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          SeriesImage(
+            series: series,
+            width: imageWidth,
+            height: imageHeight,
+            borderRadius: BorderRadius.circular(12),
           ),
-          const SizedBox(height: 2),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: _getStateColor(series.stato),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              series.stato,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  series.title,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: screenWidth < 400 ? 16 : 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${series.genere} • ${series.piattaforma}',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: screenWidth < 400 ? 12 : 14,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: _getStateColor(series.stato),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    series.stato,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: screenWidth < 400 ? 11 : 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
+          if (series.isFavorite)
+            const Padding(
+              padding: EdgeInsets.only(left: 8.0),
+              child: Icon(Icons.favorite, color: Colors.red, size: 22),
+            ),
         ],
       ),
-      trailing: series.isFavorite
-          ? const Icon(Icons.favorite, color: Colors.red, size: 20)
-          : null,
-      onTap: () => _navigateToSeriesDetail(series),
     );
   }
 

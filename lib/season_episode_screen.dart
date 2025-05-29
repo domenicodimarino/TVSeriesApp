@@ -266,6 +266,14 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardPadding = screenWidth < 400 ? 8.0 : 16.0;
+    final cardFontSize = screenWidth < 400 ? 13.0 : 16.0;
+    final sectionTitleSize = screenWidth < 400 ? 15.0 : 18.0;
+    final buttonFontSize = screenWidth < 400 ? 13.0 : 16.0;
+    final episodeTitleFontSize = screenWidth < 400 ? 12.0 : 15.0;
+    final episodeSubtitleFontSize = screenWidth < 400 ? 10.0 : 13.0;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Gestione: ${widget.series.title}'),
@@ -278,13 +286,13 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(cardPadding),
         child: Column(
           children: [
             // Riepilogo serie
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: EdgeInsets.all(cardPadding),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -293,12 +301,12 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                       children: [
                         Text(
                           'Episodi totali: ${editedSeries.totalEpisodes}',
-                          style: Theme.of(context).textTheme.bodyLarge,
+                          style: TextStyle(fontSize: cardFontSize, fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Episodi visti: ${editedSeries.watchedEpisodes}',
-                          style: Theme.of(context).textTheme.bodyLarge,
+                          style: TextStyle(fontSize: cardFontSize, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
@@ -318,26 +326,39 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
               ),
             ),
             
-            const SizedBox(height: 16),
+            SizedBox(height: cardPadding),
             
             // Intestazione e pulsante aggiungi stagione
             Row(
               children: [
-                const Text('Stagioni:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  'Stagioni:',
+                  style: TextStyle(
+                    fontSize: sectionTitleSize,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const Spacer(),
                 ElevatedButton.icon(
                   onPressed: _addSeason,
                   icon: const Icon(Icons.add),
-                  label: const Text('Aggiungi Stagione'),
+                  label: Text(
+                    'Aggiungi Stagione',
+                    style: TextStyle(fontSize: buttonFontSize),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green[700],
                     foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth < 400 ? 8 : 16,
+                      vertical: screenWidth < 400 ? 6 : 10,
+                    ),
                   ),
                 ),
               ],
             ),
             
-            const SizedBox(height: 16),
+            SizedBox(height: cardPadding),
             
             // Lista stagioni
             Expanded(
@@ -346,7 +367,7 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                 itemBuilder: (context, seasonIndex) {
                   final season = editedSeries.seasons[seasonIndex];
                   return Card(
-                    margin: const EdgeInsets.only(bottom: 16),
+                    margin: EdgeInsets.only(bottom: cardPadding),
                     elevation: 3,
                     child: ExpansionTile(
                       leading: IconButton(
@@ -367,6 +388,7 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                           decoration: season.isCompleted 
                               ? TextDecoration.lineThrough 
                               : null,
+                          fontSize: cardFontSize,
                         ),
                         decoration: const InputDecoration(
                           border: InputBorder.none,
@@ -376,16 +398,23 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                       subtitle: Text(
                         'Episodi: ${season.episodes.length} | '
                         'Visti: ${season.episodes.where((e) => e.watched).length}',
+                        style: TextStyle(fontSize: screenWidth < 400 ? 11 : 13),
                       ),
                       children: [
                         Padding(
-                          padding: const EdgeInsets.all(16.0),
+                          padding: EdgeInsets.all(cardPadding),
                           child: Column(
                             children: [
                               // Intestazione episodi
                               Row(
                                 children: [
-                                  const Text('Episodi:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  Text(
+                                    'Episodi:',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: cardFontSize,
+                                    ),
+                                  ),
                                   const Spacer(),
                                   ElevatedButton(
                                     onPressed: () {
@@ -401,13 +430,20 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.green[700],
                                       foregroundColor: Colors.white,
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: screenWidth < 400 ? 8 : 16,
+                                        vertical: screenWidth < 400 ? 6 : 10,
+                                      ),
                                     ),
-                                    child: const Text('+ Aggiungi Episodi'),
+                                    child: Text(
+                                      '+ Aggiungi Episodi',
+                                      style: TextStyle(fontSize: buttonFontSize),
+                                    ),
                                   ),
                                 ],
                               ),
                               
-                              const SizedBox(height: 16),
+                              SizedBox(height: cardPadding),
                               
                               // Lista episodi
                               ...season.episodes.mapIndexed((episodeIndex, episode) {
@@ -431,6 +467,7 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                                       color: episode.watched 
                                           ? Colors.green 
                                           : null,
+                                      fontSize: episodeTitleFontSize,
                                     ),
                                     decoration: const InputDecoration(
                                       border: OutlineInputBorder(),
@@ -443,7 +480,10 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                                       seasonIndex, episodeIndex
                                     ),
                                   ),
-                                  subtitle: Text('Episodio ${episode.episodeNumber}'),
+                                  subtitle: Text(
+                                    'Episodio ${episode.episodeNumber}',
+                                    style: TextStyle(fontSize: episodeSubtitleFontSize),
+                                  ),
                                 );
                               }).toList(),
                             ],
