@@ -303,65 +303,68 @@ class _SearchScreenState extends State<SearchScreen> {
     final horizontalPadding = screenWidth < 400 ? 8.0 : 16.0;
     final verticalPadding = screenWidth < 400 ? 8.0 : 12.0;
 
-    return Container(
-      height: containerHeight,
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SeriesImage(
-            series: series,
-            width: imageWidth,
-            height: imageHeight,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  series.title,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: screenWidth < 400 ? 16 : 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${series.genere} • ${series.piattaforma}',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: screenWidth < 400 ? 12 : 14,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: _getStateColor(series.stato),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    series.stato,
+    return InkWell(
+      onTap: () => _navigateToSeriesDetail(series),
+      child: Container(
+        height: containerHeight,
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SeriesImage(
+              series: series,
+              width: imageWidth,
+              height: imageHeight,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    series.title,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: screenWidth < 400 ? 11 : 13,
-                      fontWeight: FontWeight.w500,
+                      fontSize: screenWidth < 400 ? 16 : 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    '${series.genere} • ${series.piattaforma}',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: screenWidth < 400 ? 12 : 14,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _getStateColor(series.stato),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      series.stato,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: screenWidth < 400 ? 11 : 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          if (series.isFavorite)
-            const Padding(
-              padding: EdgeInsets.only(left: 8.0),
-              child: Icon(Icons.favorite, color: Colors.red, size: 22),
-            ),
-        ],
+            if (series.isFavorite)
+              const Padding(
+                padding: EdgeInsets.only(left: 8.0),
+                child: Icon(Icons.favorite, color: Colors.red, size: 22),
+              ),
+          ],
+        ),
       ),
     );
   }
