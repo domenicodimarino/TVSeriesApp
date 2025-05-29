@@ -6,6 +6,7 @@ import 'add_edit_series_screen.dart';
 import 'database_helper.dart';
 import 'analytics_screen.dart';
 import 'widgets/series_image.dart';
+import 'splash_screen.dart';
 
 void main() => runApp(const LetterboxdApp());
 
@@ -25,8 +26,9 @@ class LetterboxdApp extends StatelessWidget {
           surfaceTintColor: Colors.transparent,
         ),
       ),
-      initialRoute: DomflixHomePage.routeName,
+      initialRoute: SplashScreen.routeName, // Cambia qui
       routes: {
+        SplashScreen.routeName: (context) => const SplashScreen(),
         DomflixHomePage.routeName: (context) => const DomflixHomePage(),
         SearchScreen.routeName: (context) => const SearchScreen(),
         AnalyticsScreen.routeName: (context) => const AnalyticsScreen(),

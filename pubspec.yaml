@@ -25,7 +25,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/domflix_logo.jpeg
+    - assets/
 
 flutter_icons:
   android: true
