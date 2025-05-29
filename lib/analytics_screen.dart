@@ -474,7 +474,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
     final List<BarChartGroupData> barGroups = [];
     final List<String> labels = data.keys.toList();
-    
+    final barHeight = 40.0;
+
     for (int i = 0; i < labels.length; i++) {
       barGroups.add(
         BarChartGroupData(
@@ -483,7 +484,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             BarChartRodData(
               toY: data[labels[i]]!.toDouble(),
               color: const Color(0xFFB71C1C),
-              width: 20,
+              width: 18,
               borderRadius: BorderRadius.circular(4),
             ),
           ],
@@ -492,40 +493,87 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }
 
     return SizedBox(
-      height: 200,
-      child: BarChart(
-        BarChartData(
-          barGroups: barGroups,
-          titlesData: FlTitlesData(
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (double value, TitleMeta meta) {
-                  final index = value.toInt();
-                  if (index >= 0 && index < labels.length) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        labels[index],
-                        style: const TextStyle(color: Colors.white70, fontSize: 12),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+      height: barHeight * labels.length,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Grafico a barre orizzontali
+          Expanded(
+            child: RotatedBox(
+              quarterTurns: 1,
+              child: SizedBox(
+                width: barHeight * labels.length,
+                height: 300,
+                child: BarChart(
+                  BarChartData(
+                    barGroups: barGroups,
+                    alignment: BarChartAlignment.spaceBetween,
+                    gridData: FlGridData(show: false),
+                    borderData: FlBorderData(show: false),
+                    barTouchData: BarTouchData(enabled: false),
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (double value, TitleMeta meta) {
+                            final index = value.toInt();
+                            if (index >= 0 && index < labels.length) {
+                              return RotatedBox(
+                                quarterTurns: -1,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    labels[index],
+                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              );
+                            }
+                            return const Text('');
+                          },
+                          reservedSize: 80,
+                        ),
                       ),
-                    );
-                  }
-                  return const Text('');
-                },
+                      leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ),
+                    minY: 0,
+                    maxY: (data.values.isNotEmpty ? data.values.reduce((a, b) => a > b ? a : b) : 1).toDouble() + 1,
+                    groupsSpace: 16,
+                  ),
+                ),
               ),
             ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
-          gridData: FlGridData(show: false),
-          borderData: FlBorderData(show: false),
-        ),
+          const SizedBox(width: 12),
+          // Colonna dei numeri accanto alle barre, allineata
+          SizedBox(
+            width: 56,
+            child: ListView.builder(
+              itemCount: data.values.length,
+              itemExtent: barHeight,
+              physics: const NeverScrollableScrollPhysics(),
+              itemBuilder: (context, index) {
+                final v = data.values.elementAt(index);
+                final total = _allSeries.length == 0 ? 1 : _allSeries.length;
+                final percent = (v / total * 100).toStringAsFixed(1);
+                return Center(
+                  child: Text(
+                    '$percent%',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
