@@ -43,6 +43,17 @@ class DatabaseHelper {
         name TEXT UNIQUE
       )
     ''');
+    
+    // Aggiungi questa tabella per l'associazione serie-categorie
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS custom_category_series(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category_name TEXT NOT NULL,
+        series_id INTEGER NOT NULL,
+        is_genre INTEGER NOT NULL,
+        FOREIGN KEY (series_id) REFERENCES series (id) ON DELETE CASCADE
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -54,6 +65,31 @@ class DatabaseHelper {
     }
     if (oldVersion < 4) {
       await _upgradeToVersion4(db);
+      
+      // Crea le tabelle per le categorie personalizzate se non esistono
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS custom_genres(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT UNIQUE
+        )
+      ''');
+      
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS custom_platforms(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT UNIQUE
+        )
+      ''');
+      
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS custom_category_series(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          category_name TEXT NOT NULL,
+          series_id INTEGER NOT NULL,
+          is_genre INTEGER NOT NULL,
+          FOREIGN KEY (series_id) REFERENCES series (id) ON DELETE CASCADE
+        )
+      ''');
     }
   }
 
@@ -449,6 +485,119 @@ class DatabaseHelper {
       {'name': name},
       conflictAlgorithm: ConflictAlgorithm.ignore, // Ignora se esiste già
     );
+  }
+
+  // Metodi per gestire l'associazione delle serie alle categorie personalizzate
+  Future<void> deleteCustomGenre(String name) async {
+    final db = await database;
+    await db.delete('custom_genres', where: 'name = ?', whereArgs: [name]);
+    // Elimina anche le associazioni nella tabella di collegamento
+    await db.delete('custom_category_series', where: 'category_name = ? AND is_genre = 1', whereArgs: [name]);
+  }
+
+  Future<void> deleteCustomPlatform(String name) async {
+    final db = await database;
+    await db.delete('custom_platforms', where: 'name = ?', whereArgs: [name]);
+    // Elimina anche le associazioni nella tabella di collegamento
+    await db.delete('custom_category_series', where: 'category_name = ? AND is_genre = 0', whereArgs: [name]);
+  }
+
+  Future<List<int>> getSeriesInCustomCategory(String categoryName, bool isGenre) async {
+    final db = await database;
+    
+    // Controlla se la tabella esiste
+    var tables = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='custom_category_series'");
+    
+    if (tables.isEmpty) {
+      // Crea la tabella se non esiste
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS custom_category_series(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          category_name TEXT NOT NULL,
+          series_id INTEGER NOT NULL,
+          is_genre INTEGER NOT NULL,
+          FOREIGN KEY (series_id) REFERENCES series (id) ON DELETE CASCADE
+        )
+      ''');
+      return [];
+    }
+    
+    final List<Map<String, dynamic>> maps = await db.query(
+      'custom_category_series',
+      where: 'category_name = ? AND is_genre = ?',
+      whereArgs: [categoryName, isGenre ? 1 : 0],
+    );
+    return List.generate(maps.length, (i) => maps[i]['series_id']);
+  }
+
+  Future<void> updateCustomCategorySeries(String categoryName, bool isGenre, List<int> seriesIds) async {
+    final db = await database;
+    
+    // Assicurati che la tabella esista
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS custom_category_series(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category_name TEXT NOT NULL,
+        series_id INTEGER NOT NULL,
+        is_genre INTEGER NOT NULL,
+        FOREIGN KEY (series_id) REFERENCES series (id) ON DELETE CASCADE
+      )
+    ''');
+    
+    // Rimuovi tutte le serie esistenti per questa categoria
+    await db.delete(
+      'custom_category_series',
+      where: 'category_name = ? AND is_genre = ?',
+      whereArgs: [categoryName, isGenre ? 1 : 0],
+    );
+    
+    // Aggiungi le nuove serie
+    for (final seriesId in seriesIds) {
+      await db.insert('custom_category_series', {
+        'category_name': categoryName,
+        'series_id': seriesId,
+        'is_genre': isGenre ? 1 : 0,
+      });
+    }
+  }
+
+  Future<void> addSeriesToCustomCategory(String categoryName, bool isGenre, int seriesId) async {
+    final db = await database;
+    
+    // Assicurati che la tabella esista
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS custom_category_series(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category_name TEXT NOT NULL,
+        series_id INTEGER NOT NULL,
+        is_genre INTEGER NOT NULL,
+        FOREIGN KEY (series_id) REFERENCES series (id) ON DELETE CASCADE
+      )
+    ''');
+    
+    await db.insert('custom_category_series', {
+      'category_name': categoryName,
+      'series_id': seriesId,
+      'is_genre': isGenre ? 1 : 0,
+    });
+  }
+
+  Future<void> removeSeriesFromCustomCategory(String categoryName, bool isGenre, int seriesId) async {
+    final db = await database;
+    await db.delete(
+      'custom_category_series',
+      where: 'category_name = ? AND is_genre = ? AND series_id = ?',
+      whereArgs: [categoryName, isGenre ? 1 : 0, seriesId],
+    );
+  }
+
+  // Metodo per pulire il database dalle dipendenze orfane
+  Future<void> cleanOrphanedCategoryEntries() async {
+    final db = await database;
+    await db.rawDelete('''
+      DELETE FROM custom_category_series 
+      WHERE series_id NOT IN (SELECT id FROM series)
+    ''');
   }
 }
 

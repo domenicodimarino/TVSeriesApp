@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'database_helper.dart';
 import 'series.dart';
 import 'series_screen.dart';
-import 'search_screen.dart';
+import 'widgets/series_image.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key});
@@ -17,11 +17,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
   late TabController _tabController;
   bool _isLoading = true;
   
-  // Categorie e conteggi
-  Map<String, int> _genreCount = {};
-  Map<String, int> _platformCount = {};
+  // Categorie e serie
+  Map<String, List<Series>> _genreSeriesMap = {};
+  Map<String, List<Series>> _platformSeriesMap = {};
   List<String> _customGenres = [];
   List<String> _customPlatforms = [];
+  Map<String, List<Series>> _customGenreSeriesMap = {};
+  Map<String, List<Series>> _customPlatformSeriesMap = {};
 
   @override
   void initState() {
@@ -45,9 +47,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
       final dbHelper = DatabaseHelper.instance;
       final allSeries = await dbHelper.getAllSeries();
       
-      // Calcola i conteggi per genere
-      final genreCounts = <String, int>{};
-      final platformCounts = <String, int>{};
+      // Crea mappe per generi e piattaforme
+      final genreSeriesMap = <String, List<Series>>{};
+      final platformSeriesMap = <String, List<Series>>{};
       
       for (final series in allSeries) {
         // Gestione generi (possono essere multipli separati da virgola)
@@ -55,40 +57,56 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
         for (var genre in genres) {
           genre = genre.trim();
           if (genre.isNotEmpty) {
-            genreCounts[genre] = (genreCounts[genre] ?? 0) + 1;
+            genreSeriesMap.putIfAbsent(genre, () => []).add(series);
           }
         }
         
-        // Gestione piattaforme
+        // Gestione piattaforme (singola piattaforma per serie)
         final platform = series.piattaforma.trim();
         if (platform.isNotEmpty) {
-          platformCounts[platform] = (platformCounts[platform] ?? 0) + 1;
+          platformSeriesMap.putIfAbsent(platform, () => []).add(series);
         }
       }
       
       // Carica categorie personalizzate
       List<String> customGenres = [];
       List<String> customPlatforms = [];
+      Map<String, List<Series>> customGenreSeriesMap = {};
+      Map<String, List<Series>> customPlatformSeriesMap = {};
       
       try {
         customGenres = await dbHelper.getCustomGenres();
         customPlatforms = await dbHelper.getCustomPlatforms();
+        
+        // Carica le serie per ogni categoria personalizzata
+        for (final genre in customGenres) {
+          final seriesIds = await dbHelper.getSeriesInCustomCategory(genre, true);
+          final categorySeries = allSeries.where((s) => seriesIds.contains(s.id)).toList();
+          customGenreSeriesMap[genre] = categorySeries;
+        }
+        
+        for (final platform in customPlatforms) {
+          final seriesIds = await dbHelper.getSeriesInCustomCategory(platform, false);
+          final categorySeries = allSeries.where((s) => seriesIds.contains(s.id)).toList();
+          customPlatformSeriesMap[platform] = categorySeries;
+        }
       } catch (e) {
         print('Errore nel caricamento delle categorie personalizzate: $e');
-        // Se il metodo non è implementato o fallisce, usiamo liste vuote
       }
       
       setState(() {
-        _genreCount = genreCounts;
-        _platformCount = platformCounts;
+        _genreSeriesMap = genreSeriesMap;
+        _platformSeriesMap = platformSeriesMap;
         _customGenres = customGenres;
         _customPlatforms = customPlatforms;
+        _customGenreSeriesMap = customGenreSeriesMap;
+        _customPlatformSeriesMap = customPlatformSeriesMap;
         _isLoading = false;
       });
     } catch (e) {
       print('Errore nel caricamento delle categorie: $e');
       setState(() {
-        _isLoading = false; // Importante: imposta isLoading a false anche in caso di errore
+        _isLoading = false;
       });
     }
   }
@@ -101,7 +119,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF2C2C2C),
         title: Text(
-          'Aggiungi ${isGenre ? 'Genere' : 'Piattaforma'}',
+          'Aggiungi ${isGenre ? 'Genere' : 'Piattaforma'} Personalizzata',
           style: const TextStyle(color: Colors.white),
         ),
         content: TextField(
@@ -134,7 +152,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
     );
 
     if (result != null && result.isNotEmpty) {
-      // Aggiungi al database e aggiorna la UI
       final dbHelper = DatabaseHelper.instance;
       
       if (isGenre) {
@@ -147,66 +164,27 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
     }
   }
 
-  Widget _buildCategoryCard(String category, int count, [bool isCustom = false]) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final fontSize = screenWidth < 400 ? 14.0 : 16.0;
-    final countSize = screenWidth < 400 ? 13.0 : 15.0;
-
-    return Card(
-      elevation: 2,
-      margin: EdgeInsets.symmetric(
-        vertical: 6,
-        horizontal: screenWidth < 400 ? 8.0 : 16.0,
-      ),
-      color: const Color(0xFF23272F),
-      child: ListTile(
-        onTap: () => _navigateToSearch(category, _tabController.index == 0),
-        title: Text(
-          category,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        subtitle: isCustom
-            ? Text(
-                'Categoria personalizzata',
-                style: TextStyle(
-                  color: Colors.amber,
-                  fontSize: countSize - 2,
-                ),
-              )
-            : null,
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFB71C1C),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            count.toString(),
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: countSize,
-            ),
-          ),
-        ),
+  void _manageCustomCategory(String categoryName, bool isGenre) async {
+    final currentSeries = isGenre 
+        ? _customGenreSeriesMap[categoryName] ?? []
+        : _customPlatformSeriesMap[categoryName] ?? [];
+    
+    final allSeries = await DatabaseHelper.instance.getAllSeries();
+    
+    await showDialog(
+      context: context,
+      builder: (context) => _CustomCategoryManagerDialog(
+        categoryName: categoryName,
+        isGenre: isGenre,
+        currentSeries: currentSeries,
+        allSeries: allSeries,
+        onUpdate: _loadCategories,
       ),
     );
   }
 
-  void _navigateToSearch(String category, bool isGenre) async {
-    // Qui implementeremo la navigazione alla ricerca filtrata per categoria
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SearchScreen(
-          initialFilter: isGenre ? {'genre': category} : {'platform': category},
-        ),
-      ),
-    );
+  void _refreshSeries() {
+    _loadCategories();
   }
 
   @override
@@ -236,10 +214,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
           : TabBarView(
               controller: _tabController,
               children: [
-                // Tab Generi
                 _buildGenreTab(),
-                
-                // Tab Piattaforme
                 _buildPlatformTab(),
               ],
             ),
@@ -252,114 +227,171 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
   }
 
   Widget _buildGenreTab() {
-    if (_genreCount.isEmpty && _customGenres.isEmpty) {
+    final allCategories = <String, List<Series>>{};
+    allCategories.addAll(_customGenreSeriesMap);
+    allCategories.addAll(_genreSeriesMap);
+
+    if (allCategories.isEmpty) {
       return _buildEmptyState('Nessun genere disponibile');
     }
 
-    // Ordina i generi per numero di serie (decrescente)
-    final sortedGenres = _genreCount.keys.toList()
-      ..sort((a, b) => _genreCount[b]!.compareTo(_genreCount[a]!));
+    // Ordina le categorie: prima quelle personalizzate, poi per numero di serie
+    final sortedCategories = allCategories.keys.toList()
+      ..sort((a, b) {
+        final isACustom = _customGenres.contains(a);
+        final isBCustom = _customGenres.contains(b);
+        
+        if (isACustom && !isBCustom) return -1;
+        if (!isACustom && isBCustom) return 1;
+        
+        return allCategories[b]!.length.compareTo(allCategories[a]!.length);
+      });
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.only(top: 8, left: 12, right: 12, bottom: 90),
       children: [
-        // Mostra prima le categorie personalizzate
-        if (_customGenres.isNotEmpty) ...[
-          const Padding(
-            padding: EdgeInsets.only(left: 16, top: 8, bottom: 8),
-            child: Text(
-              'Generi personalizzati',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          ..._customGenres.map((genre) {
-            final count = _genreCount[genre] ?? 0;
-            return _buildCategoryCard(genre, count, true);
-          }),
-          const Divider(color: Colors.white24),
-        ],
-
-        // Mostra tutte le categorie esistenti
-        const Padding(
-          padding: EdgeInsets.only(left: 16, top: 8, bottom: 8),
-          child: Text(
-            'Tutti i generi',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        ...sortedGenres.map((genre) {
-          // Escludiamo i generi personalizzati che sono già stati mostrati sopra
-          if (!_customGenres.contains(genre)) {
-            return _buildCategoryCard(genre, _genreCount[genre]!);
-          } else {
-            return const SizedBox.shrink();
-          }
-        }).where((widget) => widget is! SizedBox),
+        ...sortedCategories.map((genre) {
+          final series = allCategories[genre]!;
+          final isCustom = _customGenres.contains(genre);
+          
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle(genre, series.length, isCustom, true),
+              if (series.isNotEmpty)
+                MovieGridDynamic(
+                  series: series,
+                  onSeriesUpdated: _refreshSeries,
+                )
+              else
+                _buildEmptyCategory(),
+              const SizedBox(height: 24),
+            ],
+          );
+        }),
       ],
     );
   }
 
   Widget _buildPlatformTab() {
-    if (_platformCount.isEmpty && _customPlatforms.isEmpty) {
+    final allCategories = <String, List<Series>>{};
+    allCategories.addAll(_customPlatformSeriesMap);
+    allCategories.addAll(_platformSeriesMap);
+
+    if (allCategories.isEmpty) {
       return _buildEmptyState('Nessuna piattaforma disponibile');
     }
 
-    // Ordina le piattaforme per numero di serie (decrescente)
-    final sortedPlatforms = _platformCount.keys.toList()
-      ..sort((a, b) => _platformCount[b]!.compareTo(_platformCount[a]!));
+    // Ordina le categorie: prima quelle personalizzate, poi per numero di serie
+    final sortedCategories = allCategories.keys.toList()
+      ..sort((a, b) {
+        final isACustom = _customPlatforms.contains(a);
+        final isBCustom = _customPlatforms.contains(b);
+        
+        if (isACustom && !isBCustom) return -1;
+        if (!isACustom && isBCustom) return 1;
+        
+        return allCategories[b]!.length.compareTo(allCategories[a]!.length);
+      });
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.only(top: 8, left: 12, right: 12, bottom: 90),
       children: [
-        // Mostra prima le piattaforme personalizzate
-        if (_customPlatforms.isNotEmpty) ...[
-          const Padding(
-            padding: EdgeInsets.only(left: 16, top: 8, bottom: 8),
-            child: Text(
-              'Piattaforme personalizzate',
+        ...sortedCategories.map((platform) {
+          final series = allCategories[platform]!;
+          final isCustom = _customPlatforms.contains(platform);
+          
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle(platform, series.length, isCustom, false),
+              if (series.isNotEmpty)
+                MovieGridDynamic(
+                  series: series,
+                  onSeriesUpdated: _refreshSeries,
+                )
+              else
+                _buildEmptyCategory(),
+              const SizedBox(height: 24),
+            ],
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title, int count, bool isCustom, bool isGenre) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0, left: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  '$count serie${isCustom ? ' • Personalizzata' : ''}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isCustom ? Colors.amber : Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isCustom) ...[
+            IconButton(
+              icon: const Icon(Icons.edit, color: Colors.white70, size: 20),
+              onPressed: () => _manageCustomCategory(title, isGenre),
+              tooltip: 'Gestisci categoria',
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+              onPressed: () => _deleteCustomCategory(title, isGenre),
+              tooltip: 'Elimina categoria',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyCategory() {
+    return Container(
+      height: 120,
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[700]!),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.movie_outlined,
+              color: Colors.grey[600],
+              size: 24,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Nessuna serie in questa categoria',
               style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+                color: Colors.grey[600],
+                fontSize: 12,
               ),
             ),
-          ),
-          ..._customPlatforms.map((platform) {
-            final count = _platformCount[platform] ?? 0;
-            return _buildCategoryCard(platform, count, true);
-          }),
-          const Divider(color: Colors.white24),
-        ],
-
-        // Mostra tutte le piattaforme esistenti
-        const Padding(
-          padding: EdgeInsets.only(left: 16, top: 8, bottom: 8),
-          child: Text(
-            'Tutte le piattaforme',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          ],
         ),
-        ...sortedPlatforms.map((platform) {
-          // Escludiamo le piattaforme personalizzate che sono già state mostrate sopra
-          if (!_customPlatforms.contains(platform)) {
-            return _buildCategoryCard(platform, _platformCount[platform]!);
-          } else {
-            return const SizedBox.shrink();
-          }
-        }).where((widget) => widget is! SizedBox),
-      ],
+      ),
     );
   }
 
@@ -393,6 +425,206 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
           ),
         ],
       ),
+    );
+  }
+
+  void _deleteCustomCategory(String categoryName, bool isGenre) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2C),
+        title: const Text('Conferma eliminazione', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Sei sicuro di voler eliminare la categoria "$categoryName"?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            child: const Text('Annulla', style: TextStyle(color: Colors.white70)),
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+          TextButton(
+            child: const Text('Elimina', style: TextStyle(color: Colors.red)),
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final dbHelper = DatabaseHelper.instance;
+      if (isGenre) {
+        await dbHelper.deleteCustomGenre(categoryName);
+      } else {
+        await dbHelper.deleteCustomPlatform(categoryName);
+      }
+      _loadCategories();
+    }
+  }
+}
+
+// Widget riutilizzato dal main.dart (identico)
+class MovieGridDynamic extends StatelessWidget {
+  final List<Series> series;
+  final VoidCallback onSeriesUpdated;
+
+  const MovieGridDynamic({
+    super.key,
+    required this.series,
+    required this.onSeriesUpdated,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final imageWidth = screenWidth < 400 ? 150.0 : (screenWidth < 600 ? 200.0 : 240.0);
+    final imageHeight = screenWidth < 400 ? 220.0 : (screenWidth < 600 ? 300.0 : 360.0);
+
+    return SizedBox(
+      height: imageHeight + 40,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: series.length,
+        itemBuilder: (context, index) {
+          final s = series[index];
+          return Container(
+            width: imageWidth,
+            margin: const EdgeInsets.only(right: 12),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.pushNamed(
+                  context,
+                  SeriesScreen.routeName,
+                  arguments: {
+                    'series': s,
+                    'onSeriesUpdated': onSeriesUpdated,
+                  },
+                );
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SeriesImage(
+                    series: s,
+                    width: imageWidth,
+                    height: imageHeight,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    s.title,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: screenWidth < 400 ? 12 : 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// Dialog per gestire le categorie personalizzate
+class _CustomCategoryManagerDialog extends StatefulWidget {
+  final String categoryName;
+  final bool isGenre;
+  final List<Series> currentSeries;
+  final List<Series> allSeries;
+  final VoidCallback onUpdate;
+
+  const _CustomCategoryManagerDialog({
+    required this.categoryName,
+    required this.isGenre,
+    required this.currentSeries,
+    required this.allSeries,
+    required this.onUpdate,
+  });
+
+  @override
+  State<_CustomCategoryManagerDialog> createState() => _CustomCategoryManagerDialogState();
+}
+
+class _CustomCategoryManagerDialogState extends State<_CustomCategoryManagerDialog> {
+  late List<Series> _selectedSeries;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedSeries = List.from(widget.currentSeries);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF2C2C2C),
+      title: Text(
+        'Gestisci "${widget.categoryName}"',
+        style: const TextStyle(color: Colors.white),
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 400,
+        child: ListView.builder(
+          itemCount: widget.allSeries.length,
+          itemBuilder: (context, index) {
+            final series = widget.allSeries[index];
+            final isSelected = _selectedSeries.any((s) => s.id == series.id);
+            
+            return CheckboxListTile(
+              value: isSelected,
+              title: Text(
+                series.title,
+                style: const TextStyle(color: Colors.white),
+              ),
+              subtitle: Text(
+                '${series.genere} • ${series.piattaforma}',
+                style: const TextStyle(color: Colors.white70),
+              ),
+              activeColor: const Color(0xFFB71C1C),
+              onChanged: (bool? value) {
+                setState(() {
+                  if (value == true) {
+                    if (!_selectedSeries.any((s) => s.id == series.id)) {
+                      _selectedSeries.add(series);
+                    }
+                  } else {
+                    _selectedSeries.removeWhere((s) => s.id == series.id);
+                  }
+                });
+              },
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          child: const Text('Annulla', style: TextStyle(color: Colors.white70)),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        TextButton(
+          child: const Text('Salva', style: TextStyle(color: Colors.red)),
+          onPressed: () async {
+            final dbHelper = DatabaseHelper.instance;
+            final seriesIds = _selectedSeries.map((s) => s.id!).toList();
+            
+            await dbHelper.updateCustomCategorySeries(
+              widget.categoryName,
+              widget.isGenre,
+              seriesIds,
+            );
+            
+            widget.onUpdate();
+            Navigator.of(context).pop();
+          },
+        ),
+      ],
     );
   }
 }
