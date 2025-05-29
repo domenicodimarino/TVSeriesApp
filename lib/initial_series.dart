@@ -406,7 +406,7 @@ final List<Series> initialSeries = [
         trama: 'Quattro ristoratori si sfidano per scoprire chi ha il miglior ristorante in una determinata categoria.',
         genere: 'Reality, Cucina',
         stato: 'Da guardare',
-        piattaforma: 'Amazon Prime Video',
+        piattaforma: 'Prime Video',
         imageUrl: 'https://artworks.thetvdb.com/banners/series/306595/posters/5eb053e1c1bab.jpg',
       ),
       Series(
@@ -430,7 +430,7 @@ final List<Series> initialSeries = [
         trama: 'Un adolescente scopre di avere poteri sovrumani e cerca di seguire le orme del padre, il supereroe più potente della Terra.',
         genere: 'Animazione, Azione',
         stato: 'Da guardare',
-        piattaforma: 'Amazon Prime Video',
+        piattaforma: 'Prime Video',
         imageUrl: 'https://m.media-amazon.com/images/M/MV5BNDQ4YTUwZDMtNmUwOC00MmI5LTljMjMtMTE5MzdjMjc4NWFkXkEyXkFqcGc@._V1_.jpg',
       )
     ];
