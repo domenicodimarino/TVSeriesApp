@@ -401,8 +401,14 @@ class _SeriesScreenState extends State<SeriesScreen> {
         Center(
           child: ElevatedButton.icon(
             onPressed: _manageSeasons,
-            icon: const Icon(Icons.playlist_add),
-            label: const Text("Gestisci Stagioni ed Episodi"),
+            icon: const Icon(
+              Icons.playlist_add,
+              color: Colors.white,
+            ),
+            label: const Text(
+              "Gestisci Stagioni ed Episodi",
+              style: TextStyle(color: Colors.white),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFB71C1C),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),

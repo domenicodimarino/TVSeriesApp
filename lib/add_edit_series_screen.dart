@@ -346,8 +346,14 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
   Widget _buildManageSeasonsButton() {
     return ElevatedButton.icon(
       onPressed: _manageSeasons,
-      icon: const Icon(Icons.playlist_add),
-      label: const Text("Gestisci Stagioni ed Episodi"),
+      icon: const Icon(
+        Icons.playlist_add,
+        color: Colors.white,
+      ),
+      label: const Text(
+              "Gestisci Stagioni ed Episodi",
+              style: TextStyle(color: Colors.white),
+            ),
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFFB71C1C),
         padding: const EdgeInsets.symmetric(vertical: 16),
