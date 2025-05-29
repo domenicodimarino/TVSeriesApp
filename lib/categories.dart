@@ -22,6 +22,8 @@ const Map<String, String> genreEmojis = {
   'reality': '📹',
   'cucina': '🍳',
   'sport': '🏆',
+  'documentario': '📚',
+  'automobilismo': '🏎️',
 };
 
 class CategoriesScreen extends StatefulWidget {
