@@ -179,7 +179,7 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
             const SizedBox(height: 24),
 
             // Sezione Da guardare
-            const SectionTitle(title: "🎬 Potrebbe piacerti"),
+            const SectionTitle(title: "🎬 Tutte le serie da guardare"),
             FutureBuilder<List<Series>>(
               future: _loadWatchLaterSeries(),
               builder: (context, snapshot) {
