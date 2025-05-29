@@ -3,7 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'database_helper.dart';
 import 'series.dart';
 import 'main.dart';
-import 'widgets/series_image.dart'; // filepath: lib/analytics_screen.dart
+import 'widgets/series_image.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -76,7 +76,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Map<String, int> get _genreDistribution {
     final distribution = <String, int>{};
     for (final series in _allSeries) {
-      distribution[series.genere] = (distribution[series.genere] ?? 0) + 1;
+      final genres = series.genere.split(',').map((g) => g.trim().toLowerCase());
+      for (final genre in genres) {
+        if (genre.isNotEmpty) {
+          distribution[genre] = (distribution[genre] ?? 0) + 1;
+        }
+      }
     }
     return distribution;
   }
@@ -374,7 +379,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     ];
 
     final List<PieChartSectionData> pieSections = [];
-    final List<String> labels = data.keys.toList();
+    // Per rendere maiuscola la prima lettera del genere
+    final List<String> labels = data.keys
+        .map((g) => g.isNotEmpty ? g[0].toUpperCase() + g.substring(1) : g)
+        .toList();
     int index = 0;
     
     data.forEach((label, value) {
@@ -415,7 +423,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       return;
                     }
                     final touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
-                    // Controllo che l'indice sia valido
                     if (touchedIndex >= 0 && touchedIndex < labels.length) {
                       _touchedIndex = touchedIndex;
                     } else {
@@ -444,7 +451,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 ],
               ),
               child: Text(
-                labels[_touchedIndex!],
+                labels[_touchedIndex!], // Mostra la label capitalizzata
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
