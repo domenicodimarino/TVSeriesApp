@@ -19,7 +19,7 @@ class SeasonEpisodeScreen extends StatefulWidget {
 class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
   late Series editedSeries;
   final List<TextEditingController> _seasonNameControllers = [];
-  final List<TextEditingController> _episodeTitleControllers = [];
+  final List<List<TextEditingController>> _episodeTitleControllers = [];
 
   @override
   void initState() {
@@ -31,6 +31,14 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
         (season) => TextEditingController(text: season.name)
       )
     );
+    // Inizializza i controller per i titoli degli episodi
+    _episodeTitleControllers.clear();
+    for (final season in editedSeries.seasons) {
+      _episodeTitleControllers.add([
+        for (final episode in season.episodes)
+          TextEditingController(text: episode.title)
+      ]);
+    }
   }
 
   @override
@@ -39,8 +47,10 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
     for (var controller in _seasonNameControllers) {
       controller.dispose();
     }
-    for (var controller in _episodeTitleControllers) {
-      controller.dispose();
+    for (var seasonControllers in _episodeTitleControllers) {
+      for (var controller in seasonControllers) {
+        controller.dispose();
+      }
     }
     super.dispose();
   }
@@ -49,7 +59,7 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
     final newSeasonNumber = editedSeries.seasons.length + 1;
     final defaultName = 'Stagione $newSeasonNumber';
     final newController = TextEditingController(text: defaultName);
-    
+
     setState(() {
       editedSeries = editedSeries.copyWith(
         seasons: [
@@ -62,6 +72,7 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
         ]
       );
       _seasonNameControllers.add(newController);
+      _episodeTitleControllers.add([]);
     });
   }
 
@@ -70,7 +81,7 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
 
     final season = editedSeries.seasons[seasonIndex];
     final startEpisode = season.episodes.length + 1;
-    
+
     final newEpisodes = List.generate(
       count,
       (i) => Episode(
@@ -88,11 +99,14 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
               name: s.name,
               episodes: [...s.episodes, ...newEpisodes],
             )..updateCompletionStatus();
-            
+
             return updatedSeason;
           }
           return s;
         }).toList(),
+      );
+      _episodeTitleControllers[seasonIndex].addAll(
+        newEpisodes.map((e) => TextEditingController(text: e.title))
       );
     });
   }
@@ -111,13 +125,13 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                     )
                   : episode;
             }).toList();
-            
+
             final updatedSeason = Season(
               seasonNumber: season.seasonNumber,
               name: season.name,
               episodes: updatedEpisodes,
             )..updateCompletionStatus();
-            
+
             return updatedSeason;
           }
           return season;
@@ -156,7 +170,7 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                     )
                   : episode;
             }).toList();
-            
+
             return Season(
               seasonNumber: season.seasonNumber,
               name: season.name,
@@ -171,7 +185,7 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
 
   void _deleteSeason(int seasonIndex) {
     if (editedSeries.seasons.length <= 1) return;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -192,7 +206,12 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                       .whereIndexed((i, _) => i != seasonIndex)
                       .toList(),
                 );
+                _seasonNameControllers[seasonIndex].dispose();
                 _seasonNameControllers.removeAt(seasonIndex);
+                for (final c in _episodeTitleControllers[seasonIndex]) {
+                  c.dispose();
+                }
+                _episodeTitleControllers.removeAt(seasonIndex);
               });
               Navigator.pop(context);
             },
@@ -206,7 +225,7 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
   void _deleteEpisode(int seasonIndex, int episodeIndex) {
     final season = editedSeries.seasons[seasonIndex];
     if (season.episodes.length <= 1) return;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -228,18 +247,20 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                       final updatedEpisodes = s.episodes
                           .whereIndexed((j, _) => j != episodeIndex)
                           .toList();
-                      
+
                       final updatedSeason = Season(
                         seasonNumber: s.seasonNumber,
                         name: s.name,
                         episodes: updatedEpisodes,
                       )..updateCompletionStatus();
-                      
+
                       return updatedSeason;
                     }
                     return s;
                   }).toList(),
                 );
+                _episodeTitleControllers[seasonIndex][episodeIndex].dispose();
+                _episodeTitleControllers[seasonIndex].removeAt(episodeIndex);
               });
               Navigator.pop(context);
             },
@@ -254,12 +275,11 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
     // Aggiorna lo stato della serie in base al completamento
     final newSeries = editedSeries.copyWith(
       stato: editedSeries.isCompleted ? 'Completata' : editedSeries.stato,
-      // Se la serie è completata ma non ha una data, aggiungila
       dateCompleted: editedSeries.isCompleted && editedSeries.dateCompleted == null
           ? DateTime.now()
           : editedSeries.dateCompleted,
     );
-    
+
     widget.onSave(newSeries);
     Navigator.pop(context, true); // Indica che le modifiche sono state salvate
   }
@@ -311,12 +331,12 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                       ],
                     ),
                     Chip(
-                      backgroundColor: editedSeries.isCompleted 
-                          ? Colors.green[800] 
+                      backgroundColor: editedSeries.isCompleted
+                          ? Colors.green[800]
                           : Theme.of(context).primaryColor,
                       label: Text(
-                        editedSeries.isCompleted 
-                            ? 'COMPLETATA' 
+                        editedSeries.isCompleted
+                            ? 'COMPLETATA'
                             : 'IN CORSO',
                         style: const TextStyle(color: Colors.white),
                       ),
@@ -325,9 +345,9 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                 ),
               ),
             ),
-            
+
             SizedBox(height: cardPadding),
-            
+
             // Intestazione e pulsante aggiungi stagione
             Row(
               children: [
@@ -357,9 +377,9 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                 ),
               ],
             ),
-            
+
             SizedBox(height: cardPadding),
-            
+
             // Lista stagioni
             Expanded(
               child: ListView.builder(
@@ -385,8 +405,8 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: season.isCompleted ? Colors.green : null,
-                          decoration: season.isCompleted 
-                              ? TextDecoration.lineThrough 
+                          decoration: season.isCompleted
+                              ? TextDecoration.lineThrough
                               : null,
                           fontSize: cardFontSize,
                         ),
@@ -442,14 +462,16 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                                   ),
                                 ],
                               ),
-                              
+
                               SizedBox(height: cardPadding),
-                              
+
                               // Lista episodi
                               ...season.episodes.mapIndexed((episodeIndex, episode) {
-                                final controller = TextEditingController(text: episode.title);
-                                _episodeTitleControllers.add(controller);
-                                
+                                final controller = _episodeTitleControllers.length > seasonIndex &&
+                                        _episodeTitleControllers[seasonIndex].length > episodeIndex
+                                    ? _episodeTitleControllers[seasonIndex][episodeIndex]
+                                    : TextEditingController(text: episode.title);
+
                                 return ListTile(
                                   leading: IconButton(
                                     icon: const Icon(Icons.delete, color: Colors.red),
@@ -457,15 +479,13 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                                   ),
                                   title: TextField(
                                     controller: controller,
-                                    onChanged: (value) => _updateEpisodeTitle(
-                                      seasonIndex, episodeIndex, value
-                                    ),
+                                    onChanged: (value) => _updateEpisodeTitle(seasonIndex, episodeIndex, value),
                                     style: TextStyle(
-                                      decoration: episode.watched 
-                                          ? TextDecoration.lineThrough 
+                                      decoration: episode.watched
+                                          ? TextDecoration.lineThrough
                                           : null,
-                                      color: episode.watched 
-                                          ? Colors.green 
+                                      color: episode.watched
+                                          ? Colors.green
                                           : null,
                                       fontSize: episodeTitleFontSize,
                                     ),
@@ -476,9 +496,7 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                                   ),
                                   trailing: Checkbox(
                                     value: episode.watched,
-                                    onChanged: (_) => _toggleEpisodeWatchStatus(
-                                      seasonIndex, episodeIndex
-                                    ),
+                                    onChanged: (_) => _toggleEpisodeWatchStatus(seasonIndex, episodeIndex),
                                   ),
                                   subtitle: Text(
                                     'Episodio ${episode.episodeNumber}',
