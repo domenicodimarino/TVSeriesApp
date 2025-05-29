@@ -29,6 +29,7 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
     'Disney+',
     'HBO Max',
     'Apple TV+',
+    'Sky',
     'Altro'
   ];
   final List<String> _stati = ["In corso", "Completata", "Da guardare"];
