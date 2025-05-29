@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'database_helper.dart';
 import 'series.dart';
 import 'main.dart';
+import 'widgets/series_image.dart'; // filepath: lib/analytics_screen.dart
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -552,17 +553,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           const SizedBox(width: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: Image.network(
-              series.imageUrl,
+            child: SeriesImage(
+              series: series,
               width: 40,
               height: 60,
-              fit: BoxFit.cover,
-              errorBuilder: (c, e, s) => Container(
-                width: 40,
-                height: 60,
-                color: Colors.grey[800],
-                child: const Icon(Icons.broken_image, color: Colors.white70, size: 20),
-              ),
+              borderRadius: BorderRadius.circular(4),
             ),
           ),
           const SizedBox(width: 12),
@@ -601,17 +596,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: Image.network(
-              series.imageUrl,
+            child: SeriesImage(
+              series: series,
               width: 40,
               height: 60,
-              fit: BoxFit.cover,
-              errorBuilder: (c, e, s) => Container(
-                width: 40,
-                height: 60,
-                color: Colors.grey[800],
-                child: const Icon(Icons.broken_image, color: Colors.white70, size: 20),
-              ),
+              borderRadius: BorderRadius.circular(4),
             ),
           ),
           const SizedBox(width: 12),
