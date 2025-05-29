@@ -224,7 +224,6 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
 
   void _deleteEpisode(int seasonIndex, int episodeIndex) {
     final season = editedSeries.seasons[seasonIndex];
-    if (season.episodes.length <= 1) return;
 
     showDialog(
       context: context,
