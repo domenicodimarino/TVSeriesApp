@@ -347,8 +347,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   Widget _buildChartContainer({required String title, required Widget child}) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isPortrait = screenHeight > screenWidth;
+    
     final horizontalPadding = screenWidth < 400 ? 8.0 : 16.0;
-    final verticalPadding = screenWidth < 400 ? 8.0 : 12.0;
+    // Aumenta il padding verticale in modalità portrait
+    final verticalPadding = isPortrait ? 24.0 : (screenWidth < 400 ? 8.0 : 12.0);
     final titleFontSize = screenWidth < 400 ? 12.0 : 14.0;
 
     return Container(
@@ -372,8 +376,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: verticalPadding),
+          SizedBox(height: isPortrait ? verticalPadding : verticalPadding/2),
           child,
+          // Aggiunta di spazio extra in fondo in modalità portrait
+          if (isPortrait) SizedBox(height: 12.0),
         ],
       ),
     );
