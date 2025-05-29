@@ -28,6 +28,21 @@ class DatabaseHelper {
   Future<void> _onCreate(Database db, int version) async {
     await _createTables(db);
     await _insertInitialData(db);
+
+    // Crea le tabelle per le categorie personalizzate
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS custom_genres(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE
+      )
+    ''');
+    
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS custom_platforms(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -354,6 +369,86 @@ class DatabaseHelper {
       }
     }
     print('========================');
+  }
+
+  // Metodi per gestire generi personalizzati
+  Future<List<String>> getCustomGenres() async {
+    final db = await database;
+    
+    // Controlla se la tabella esiste
+    var tables = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='custom_genres'");
+    
+    if (tables.isEmpty) {
+      // Crea la tabella se non esiste
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS custom_genres(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT UNIQUE
+        )
+      ''');
+      return [];
+    }
+    
+    final result = await db.query('custom_genres');
+    return result.map((row) => row['name'] as String).toList();
+  }
+
+  Future<List<String>> getCustomPlatforms() async {
+    final db = await database;
+    
+    // Controlla se la tabella esiste
+    var tables = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='custom_platforms'");
+    
+    if (tables.isEmpty) {
+      // Crea la tabella se non esiste
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS custom_platforms(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT UNIQUE
+        )
+      ''');
+      return [];
+    }
+    
+    final result = await db.query('custom_platforms');
+    return result.map((row) => row['name'] as String).toList();
+  }
+
+  // Metodi per aggiungere categorie personalizzate
+  Future<int> addCustomGenre(String name) async {
+    final db = await database;
+    
+    // Assicurati che la tabella esista
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS custom_genres(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE
+      )
+    ''');
+    
+    return await db.insert(
+      'custom_genres',
+      {'name': name},
+      conflictAlgorithm: ConflictAlgorithm.ignore, // Ignora se esiste già
+    );
+  }
+
+  Future<int> addCustomPlatform(String name) async {
+    final db = await database;
+    
+    // Assicurati che la tabella esista
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS custom_platforms(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE
+      )
+    ''');
+    
+    return await db.insert(
+      'custom_platforms',
+      {'name': name},
+      conflictAlgorithm: ConflictAlgorithm.ignore, // Ignora se esiste già
+    );
   }
 }
 

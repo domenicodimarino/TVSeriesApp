@@ -5,7 +5,9 @@ import 'series_screen.dart';
 import 'widgets/series_image.dart'; // Assicurati che questo import sia presente
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  final Map<String, String>? initialFilter;
+  
+  const SearchScreen({super.key, this.initialFilter});
 
   static const routeName = '/search';
 
@@ -26,7 +28,18 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
+    
     _selectedStateFilter = _stateFilters.first; // "Tutti" come default
+    
+    // Se c'è un filtro iniziale, applicalo
+    if (widget.initialFilter != null) {
+      if (widget.initialFilter!.containsKey('genre')) {
+        _searchController.text = widget.initialFilter!['genre']!;
+      } else if (widget.initialFilter!.containsKey('platform')) {
+        _searchController.text = widget.initialFilter!['platform']!;
+      }
+    }
+    
     _loadSeries();
   }
 

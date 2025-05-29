@@ -7,6 +7,7 @@ import 'database_helper.dart';
 import 'analytics_screen.dart';
 import 'widgets/series_image.dart';
 import 'splash_screen.dart';
+import 'categories.dart';  // Aggiungi questo import
 
 void main() => runApp(const LetterboxdApp());
 
@@ -33,6 +34,7 @@ class LetterboxdApp extends StatelessWidget {
         SearchScreen.routeName: (context) => const SearchScreen(),
         AnalyticsScreen.routeName: (context) => const AnalyticsScreen(),
         AddEditSeriesScreen.routeName: (context) => const AddEditSeriesScreen(),
+        CategoriesScreen.routeName: (context) => const CategoriesScreen(), 
       },
       onGenerateRoute: (settings) {
         if (settings.name == SeriesScreen.routeName) {
@@ -474,6 +476,21 @@ class CustomFooter extends StatelessWidget {
           ),
           
           IconButton(
+            icon: const Icon(Icons.search, color: Colors.white, size: 30),
+            onPressed: () async {
+              if (ModalRoute.of(context)?.settings.name != SearchScreen.routeName) {
+                final result = await Navigator.pushNamed(
+                  context,
+                  SearchScreen.routeName,
+                );
+                if (result == true) {
+                  onSeriesAdded();
+                }
+              }
+            },
+          ),
+          
+          IconButton(
             icon: const Icon(Icons.add, color: Colors.white, size: 30),
             onPressed: () async {
               final result = await Navigator.pushNamed(
@@ -487,16 +504,13 @@ class CustomFooter extends StatelessWidget {
           ),
           
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.white, size: 30),
-            onPressed: () async {
-              if (ModalRoute.of(context)?.settings.name != SearchScreen.routeName) {
-                final result = await Navigator.pushNamed(
+            icon: const Icon(Icons.category, color: Colors.white, size: 30),
+            onPressed: () {
+              if (ModalRoute.of(context)?.settings.name != CategoriesScreen.routeName) {
+                Navigator.pushNamed(
                   context,
-                  SearchScreen.routeName,
+                  CategoriesScreen.routeName,
                 );
-                if (result == true) {
-                  onSeriesAdded();
-                }
               }
             },
           ),
