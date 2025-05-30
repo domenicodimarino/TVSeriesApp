@@ -109,127 +109,64 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
       ),
       body: Padding(
         padding: const EdgeInsets.only(top: 8, left: 12, right: 12, bottom: 0),
-        child: ListView(
-          children: [
-            // NUOVA SEZIONE: Suggerimenti dal database
-            const SectionTitle(title: "🔥 Per te"),
-            FutureBuilder<List<Series>>(
-              future: _loadDatabaseSuggestions(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return const Text("Errore nel caricamento dei suggerimenti", 
-                      style: TextStyle(color: Colors.white70));
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const EmptySection(message: "Aggiungi qualche serie per vedere i suggerimenti");
-                }
-                return MovieGridDynamic(
-                  series: snapshot.data!,
-                  onSeriesUpdated: _refreshSeries,
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-
-            // Sezione Preferiti
-            const SectionTitle(title: "⭐ I tuoi preferiti"),
-            FutureBuilder<List<Series>>(
-              future: _loadFavoriteSeries(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                      child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return const Text("Errore nel caricamento dei preferiti", 
-                      style: TextStyle(color: Colors.white70));
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const EmptySection(message: "Nessuna serie tra i preferiti");
-                }
-                return MovieGridDynamic(
-                  series: snapshot.data!,
-                  onSeriesUpdated: _refreshSeries,
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-
-            // Sezione In corso
-            const SectionTitle(title: "📺 Le tue serie in corso"),
-            FutureBuilder<List<Series>>(
-              future: _loadInProgressSeries(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                      child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return const Text("Errore nel caricamento delle serie in corso",
-                      style: TextStyle(color: Colors.white70));
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const EmptySection(message: "Nessuna serie in corso");
-                }
-                return MovieGridDynamic(
-                  series: snapshot.data!,
-                  onSeriesUpdated: _refreshSeries,
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-
-            // Sezione Da guardare
-            const SectionTitle(title: "🎬 Tutte le serie da guardare"),
-            FutureBuilder<List<Series>>(
-              future: _loadWatchLaterSeries(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                      child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return const Text("Errore nel caricamento dei suggerimenti",
-                      style: TextStyle(color: Colors.white70));
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const EmptySection(message: "Nessuna serie da guardare");
-                }
-                return MovieGridDynamic(
-                  series: snapshot.data!,
-                  onSeriesUpdated: _refreshSeries,
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-
-            // Sezione Completate
-            const SectionTitle(title: "✅ Serie completate"),
-            FutureBuilder<List<Series>>(
-              future: _loadCompletedSeries(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                      child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return const Text("Errore nel caricamento delle serie completate",
-                      style: TextStyle(color: Colors.white70));
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const EmptySection(message: "Nessuna serie completata");
-                }
-                return MovieGridDynamic(
-                  series: snapshot.data!,
-                  onSeriesUpdated: _refreshSeries,
-                );
-              },
-            ),
-            const SizedBox(height: 90),
-          ],
+        child: FutureBuilder<List<List<Series>>>(
+          future: Future.wait([
+            _loadDatabaseSuggestions(),
+            _loadFavoriteSeries(),
+            _loadInProgressSeries(),
+            _loadWatchLaterSeries(),
+            _loadCompletedSeries(),
+          ]),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            
+            final suggestions = snapshot.data?[0] ?? [];
+            final favorites = snapshot.data?[1] ?? [];
+            final inProgress = snapshot.data?[2] ?? [];
+            final watchLater = snapshot.data?[3] ?? [];
+            final completed = snapshot.data?[4] ?? [];
+            
+            return ListView(
+              children: [
+                // Per te section
+                const SectionTitle(title: "🔥 Per te"),
+                suggestions.isEmpty
+                    ? const EmptySection(message: "Aggiungi qualche serie per vedere i suggerimenti")
+                    : MovieGridDynamic(series: suggestions, onSeriesUpdated: _refreshSeries),
+                const SizedBox(height: 24),
+                
+                // Preferiti section
+                const SectionTitle(title: "⭐ I tuoi preferiti"),
+                favorites.isEmpty
+                    ? const EmptySection(message: "Nessuna serie tra i preferiti")
+                    : MovieGridDynamic(series: favorites, onSeriesUpdated: _refreshSeries),
+                const SizedBox(height: 24),
+                
+                // In corso section
+                const SectionTitle(title: "📺 Le tue serie in corso"),
+                inProgress.isEmpty
+                    ? const EmptySection(message: "Nessuna serie in corso")
+                    : MovieGridDynamic(series: inProgress, onSeriesUpdated: _refreshSeries),
+                const SizedBox(height: 24),
+                
+                // Da guardare section
+                const SectionTitle(title: "🎬 Tutte le serie da guardare"),
+                watchLater.isEmpty
+                    ? const EmptySection(message: "Nessuna serie da guardare")
+                    : MovieGridDynamic(series: watchLater, onSeriesUpdated: _refreshSeries),
+                const SizedBox(height: 24),
+                
+                // Completate section
+                const SectionTitle(title: "✅ Serie completate"),
+                completed.isEmpty
+                    ? const EmptySection(message: "Nessuna serie completata")
+                    : MovieGridDynamic(series: completed, onSeriesUpdated: _refreshSeries),
+                const SizedBox(height: 90),
+              ],
+            );
+          },
         ),
       ),
       bottomNavigationBar: CustomFooter(onSeriesAdded: _refreshSeries),
