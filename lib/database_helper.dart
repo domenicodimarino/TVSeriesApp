@@ -74,8 +74,15 @@ class DatabaseHelper {
   }
 
   Future<void> _insertInitialData(Database db) async {
+    final now = DateTime.now();
+    
     for (final series in initialSeries) {
-      await insertSeries(series, db: db);
+      // Add dateAdded to each series if it doesn't already have one
+      final seriesWithDate = series.dateAdded == null 
+          ? series.copyWith(dateAdded: now)
+          : series;
+          
+      await insertSeries(seriesWithDate, db: db);
     }
 
     print('Database popolato con ${initialSeries.length} serie iniziali');

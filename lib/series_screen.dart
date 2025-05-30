@@ -75,6 +75,12 @@ class _SeriesScreenState extends State<SeriesScreen> {
     // Se lo stato è "Completata", imposta tutti gli episodi come visti
     List<Season> updatedSeasons = [...currentSeries.seasons];
     
+    // Determina se dobbiamo aggiornare la data di completamento
+    DateTime? newDateCompleted = currentSeries.dateCompleted;
+    if (newState == "Completata" && newDateCompleted == null) {
+      newDateCompleted = DateTime.now();
+    }
+    
     if (newState == "Completata") {
       updatedSeasons = currentSeries.seasons.map((season) {
         final updatedEpisodes = season.episodes.map((episode) => 
@@ -116,7 +122,8 @@ class _SeriesScreenState extends State<SeriesScreen> {
     
     final updatedSeries = currentSeries.copyWith(
       stato: newState,
-      seasons: updatedSeasons
+      seasons: updatedSeasons,
+      dateCompleted: newDateCompleted  // Add this line
     );
     
     await DatabaseHelper.instance.updateSeries(updatedSeries);
@@ -150,10 +157,18 @@ class _SeriesScreenState extends State<SeriesScreen> {
     }).toList();
     
     final updatedSeries = currentSeries.copyWith(seasons: updatedSeasons);
-    
-    // Determina lo stato corretto in base agli episodi guardati
     final newStatus = updatedSeries.determineCorrectStatus();
-    final finalSeries = updatedSeries.copyWith(stato: newStatus);
+    
+    
+    DateTime? newDateCompleted = updatedSeries.dateCompleted;
+    if (newStatus == "Completata" && updatedSeries.dateCompleted == null) {
+      newDateCompleted = DateTime.now();
+    }
+    
+    final finalSeries = updatedSeries.copyWith(
+      stato: newStatus,
+      dateCompleted: newDateCompleted 
+    );
     
     await DatabaseHelper.instance.updateSeries(finalSeries);
     _hasChanges = true;
