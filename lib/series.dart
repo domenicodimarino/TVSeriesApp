@@ -255,4 +255,11 @@ Series {
       dateCompleted, // Aggiunto
     );
   }
+
+  String determineCorrectStatus() {
+    if (totalEpisodes == 0) return stato; // Non cambiare lo stato se non ci sono episodi
+    if (watchedEpisodes == 0) return "Da guardare";
+    if (watchedEpisodes == totalEpisodes) return "Completata";
+    return "In corso";
+  }
 }

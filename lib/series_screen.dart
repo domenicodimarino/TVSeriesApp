@@ -72,10 +72,56 @@ class _SeriesScreenState extends State<SeriesScreen> {
   Future<void> _updateSeriesState(String newState) async {
     setState(() => statoSelezionato = newState);
     
-    final updatedSeries = currentSeries.copyWith(stato: newState);
+    // Se lo stato è "Completata", imposta tutti gli episodi come visti
+    List<Season> updatedSeasons = [...currentSeries.seasons];
+    
+    if (newState == "Completata") {
+      updatedSeasons = currentSeries.seasons.map((season) {
+        final updatedEpisodes = season.episodes.map((episode) => 
+            Episode(
+              episodeNumber: episode.episodeNumber,
+              title: episode.title,
+              watched: true,
+            )
+        ).toList();
+        
+        final updatedSeason = Season(
+          seasonNumber: season.seasonNumber,
+          name: season.name,
+          episodes: updatedEpisodes,
+        )..updateCompletionStatus();
+        
+        return updatedSeason;
+      }).toList();
+    } else if (newState == "Da guardare") {
+      // Opzionale: se imposti la serie come "Da guardare", reimposta tutti gli episodi come non visti
+      updatedSeasons = currentSeries.seasons.map((season) {
+        final updatedEpisodes = season.episodes.map((episode) => 
+            Episode(
+              episodeNumber: episode.episodeNumber,
+              title: episode.title,
+              watched: false,
+            )
+        ).toList();
+        
+        final updatedSeason = Season(
+          seasonNumber: season.seasonNumber,
+          name: season.name,
+          episodes: updatedEpisodes,
+        )..updateCompletionStatus();
+        
+        return updatedSeason;
+      }).toList();
+    }
+    
+    final updatedSeries = currentSeries.copyWith(
+      stato: newState,
+      seasons: updatedSeasons
+    );
+    
     await DatabaseHelper.instance.updateSeries(updatedSeries);
     
-    _hasChanges = true; // Segna che ci sono state modifiche
+    _hasChanges = true;
     _refreshSeries();
   }
 
@@ -105,8 +151,18 @@ class _SeriesScreenState extends State<SeriesScreen> {
     
     final updatedSeries = currentSeries.copyWith(seasons: updatedSeasons);
     
-    await DatabaseHelper.instance.updateSeries(updatedSeries);
-    _hasChanges = true; // Segna che ci sono state modifiche
+    // Determina lo stato corretto in base agli episodi guardati
+    final newStatus = updatedSeries.determineCorrectStatus();
+    final finalSeries = updatedSeries.copyWith(stato: newStatus);
+    
+    await DatabaseHelper.instance.updateSeries(finalSeries);
+    _hasChanges = true;
+    
+    // Aggiorna anche lo stato selezionato nell'interfaccia
+    setState(() {
+      statoSelezionato = newStatus;
+    });
+    
     _refreshSeries();
   }
 
