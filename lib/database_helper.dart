@@ -11,7 +11,7 @@ class DatabaseHelper {
   static Database? _database;
   Future<Database> get database async => _database ??= await _initDatabase();
 
-  static const int _currentVersion = 4; // Aggiornata a 4 per le nuove funzionalità
+  static const int _currentVersion = 1; // Versione unica
 
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
@@ -20,80 +20,12 @@ class DatabaseHelper {
     return openDatabase(
       path,
       onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
       version: _currentVersion,
     );
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    await _createTables(db);
-    await _insertInitialData(db);
-
-    // Crea le tabelle per le categorie personalizzate
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS custom_genres(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE
-      )
-    ''');
-    
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS custom_platforms(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE
-      )
-    ''');
-    
-    // Aggiungi questa tabella per l'associazione serie-categorie
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS custom_category_series(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        category_name TEXT NOT NULL,
-        series_id INTEGER NOT NULL,
-        is_genre INTEGER NOT NULL,
-        FOREIGN KEY (series_id) REFERENCES series (id) ON DELETE CASCADE
-      )
-    ''');
-  }
-
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      await _upgradeToVersion2(db);
-    }
-    if (oldVersion < 3) {
-      await _upgradeToVersion3(db);
-    }
-    if (oldVersion < 4) {
-      await _upgradeToVersion4(db);
-      
-      // Crea le tabelle per le categorie personalizzate se non esistono
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS custom_genres(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT UNIQUE
-        )
-      ''');
-      
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS custom_platforms(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT UNIQUE
-        )
-      ''');
-      
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS custom_category_series(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          category_name TEXT NOT NULL,
-          series_id INTEGER NOT NULL,
-          is_genre INTEGER NOT NULL,
-          FOREIGN KEY (series_id) REFERENCES series (id) ON DELETE CASCADE
-        )
-      ''');
-    }
-  }
-
-  Future<void> _createTables(Database db) async {
+    // Tabella principale delle serie
     await db.execute('''
       CREATE TABLE series(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -109,50 +41,39 @@ class DatabaseHelper {
         dateCompleted INTEGER
       )
     ''');
-  }
-
-  Future<void> _upgradeToVersion2(Database db) async {
+    
+    // Tabella per generi personalizzati
     await db.execute('''
-      ALTER TABLE series ADD COLUMN totalEpisodes INTEGER NOT NULL DEFAULT 1
+      CREATE TABLE custom_genres(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE
+      )
     ''');
     
+    // Tabella per piattaforme personalizzate
     await db.execute('''
-      ALTER TABLE series ADD COLUMN watchedEpisodes INTEGER NOT NULL DEFAULT 0
+      CREATE TABLE custom_platforms(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE
+      )
     ''');
     
+    // Tabella per l'associazione serie-categorie
     await db.execute('''
-      ALTER TABLE series ADD COLUMN lastWatched INTEGER
+      CREATE TABLE custom_category_series(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category_name TEXT NOT NULL,
+        series_id INTEGER NOT NULL,
+        is_genre INTEGER NOT NULL,
+        FOREIGN KEY (series_id) REFERENCES series (id) ON DELETE CASCADE
+      )
     ''');
     
-    await db.execute('''
-      ALTER TABLE series ADD COLUMN dateAdded INTEGER
-    ''');
-    
-    print('Database aggiornato alla versione 2');
-  }
-
-  Future<void> _upgradeToVersion3(Database db) async {
-    await db.execute('ALTER TABLE series ADD COLUMN seasons TEXT DEFAULT \'[]\'');
-    
-    try {
-      await db.execute('ALTER TABLE series DROP COLUMN totalEpisodes');
-      await db.execute('ALTER TABLE series DROP COLUMN watchedEpisodes');
-      await db.execute('ALTER TABLE series DROP COLUMN lastWatched');
-    } catch (e) {
-      print("Ignorato errore rimozione colonne obsolete: $e");
-    }
-    
-    print('Database aggiornato alla versione 3 con supporto stagioni/episodi');
-  }
-
-  Future<void> _upgradeToVersion4(Database db) async {
-    await db.execute('ALTER TABLE series ADD COLUMN dateCompleted INTEGER');
-    print('Database aggiornato alla versione 4 con supporto statistiche avanzate');
+    // Inserisci i dati iniziali
+    await _insertInitialData(db);
   }
 
   Future<void> _insertInitialData(Database db) async {
-    
-
     for (final series in initialSeries) {
       await insertSeries(series, db: db);
     }
