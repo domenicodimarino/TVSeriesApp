@@ -372,7 +372,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
           
-          const Spacer(),
+          SizedBox(width: screenWidth), // oppure scegli una larghezza fissa o elimina del tutto
           Text(
             '${_filteredSeries.length} risultati',
             style: const TextStyle(color: Colors.white70, fontSize: 12),
