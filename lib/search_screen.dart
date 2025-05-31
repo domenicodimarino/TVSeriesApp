@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'database_helper.dart';
 import 'series.dart';
 import 'series_screen.dart';
-import 'widgets/series_image.dart'; // Assicurati che questo import sia presente
+import 'widgets/series_image.dart';
 
 class SearchScreen extends StatefulWidget {
   final Map<String, String>? initialFilter;
@@ -19,19 +19,25 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<Series> _allSeries = [];
   List<Series> _filteredSeries = [];
-  bool _hasModified = false; // <--- aggiungi questa variabile
+  bool _hasModified = false;
   
   // Filtro per stato
   String? _selectedStateFilter;
   final List<String> _stateFilters = ["Tutti", "In corso", "Completata", "Da guardare"];
 
+  // Filtri per numero di stagioni
+  double _minSeasons = 0;
+  double _maxSeasons = 10;
+  double _currentMinSeasons = 0;
+  double _currentMaxSeasons = 10;
+  bool _showSeasonFilter = false;
+
   @override
   void initState() {
     super.initState();
     
-    _selectedStateFilter = _stateFilters.first; // "Tutti" come default
+    _selectedStateFilter = _stateFilters.first;
     
-    // Se c'è un filtro iniziale, applicalo
     if (widget.initialFilter != null) {
       if (widget.initialFilter!.containsKey('genre')) {
         _searchController.text = widget.initialFilter!['genre']!;
@@ -46,8 +52,19 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _loadSeries() async {
     final dbHelper = DatabaseHelper.instance;
     final series = await dbHelper.getAllSeries();
+    
+    // Calcola il numero massimo di stagioni
+    int maxSeasonsCount = 0;
+    for (final s in series) {
+      if (s.seasons.length > maxSeasonsCount) {
+        maxSeasonsCount = s.seasons.length;
+      }
+    }
+    
     setState(() {
       _allSeries = series;
+      _maxSeasons = maxSeasonsCount.toDouble();
+      _currentMaxSeasons = _maxSeasons;
       _applyFilters();
     });
   }
@@ -70,6 +87,12 @@ class _SearchScreenState extends State<SearchScreen> {
         return series.stato == _selectedStateFilter;
       }).toList();
     }
+    
+    // Applica filtro per numero di stagioni
+    filtered = filtered.where((series) {
+      final seasonCount = series.seasons.length;
+      return seasonCount >= _currentMinSeasons && seasonCount <= _currentMaxSeasons;
+    }).toList();
     
     // Applica filtro per ricerca testuale
     if (searchQuery.isNotEmpty) {
@@ -96,6 +119,9 @@ class _SearchScreenState extends State<SearchScreen> {
     _searchController.clear();
     setState(() {
       _selectedStateFilter = "Tutti";
+      _currentMinSeasons = _minSeasons;
+      _currentMaxSeasons = _maxSeasons;
+      _showSeasonFilter = false;
       _applyFilters(query: '');
     });
   }
@@ -110,7 +136,6 @@ class _SearchScreenState extends State<SearchScreen> {
       },
     );
     
-    // Se ci sono state modifiche, aggiorna ma NON fare un altro pop
     if (result == true) {
       _hasModified = true;
       await _loadSeries();
@@ -144,14 +169,95 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           actions: [
             _buildFilterButton(),
+            IconButton(
+              icon: Icon(
+                _showSeasonFilter ? Icons.tune : Icons.tune_outlined,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                setState(() {
+                  _showSeasonFilter = !_showSeasonFilter;
+                });
+              },
+              tooltip: 'Filtro stagioni',
+            ),
           ],
         ),
         body: Column(
           children: [
             _buildActiveFiltersBar(),
+            if (_showSeasonFilter) _buildSeasonFilterSlider(),
             Expanded(child: _buildSearchResults()),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSeasonFilterSlider() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final horizontalPadding = screenWidth < 400 ? 8.0 : 16.0;
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 16),
+      color: const Color(0xFF23272F),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Numero di stagioni:',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              Text(
+                '${_currentMinSeasons.round()} - ${_currentMaxSeasons.round()}',
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_maxSeasons > 0)
+            RangeSlider(
+              values: RangeValues(_currentMinSeasons, _currentMaxSeasons),
+              min: _minSeasons,
+              max: _maxSeasons,
+              divisions: _maxSeasons.round(),
+              activeColor: const Color(0xFFB71C1C),
+              inactiveColor: Colors.grey[600],
+              labels: RangeLabels(
+                _currentMinSeasons.round().toString(),
+                _currentMaxSeasons.round().toString(),
+              ),
+              onChanged: (RangeValues values) {
+                setState(() {
+                  _currentMinSeasons = values.start;
+                  _currentMaxSeasons = values.end;
+                  _applyFilters();
+                });
+              },
+            )
+          else
+            const Text(
+              'Nessuna serie disponibile per calcolare il range',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${_minSeasons.round()}',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+              Text(
+                '${_maxSeasons.round()}',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -192,7 +298,10 @@ class _SearchScreenState extends State<SearchScreen> {
     final horizontalPadding = screenWidth < 400 ? 8.0 : 16.0;
     final verticalPadding = screenWidth < 400 ? 4.0 : 8.0;
 
-    if (_selectedStateFilter == null || _selectedStateFilter == "Tutti") {
+    final hasStateFilter = _selectedStateFilter != null && _selectedStateFilter != "Tutti";
+    final hasSeasonFilter = _currentMinSeasons != _minSeasons || _currentMaxSeasons != _maxSeasons;
+
+    if (!hasStateFilter && !hasSeasonFilter) {
       return const SizedBox.shrink();
     }
 
@@ -200,34 +309,69 @@ class _SearchScreenState extends State<SearchScreen> {
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
       color: const Color(0xFF23272F),
-      child: Row(
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
         children: [
           const Text(
-            'Filtro attivo:',
+            'Filtri attivi:',
             style: TextStyle(color: Colors.white70, fontSize: 14),
           ),
-          const SizedBox(width: 8),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: screenWidth < 400 ? 8 : 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFB71C1C),
-              borderRadius: BorderRadius.circular(16),
+          
+          // Filtro stato
+          if (hasStateFilter)
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: screenWidth < 400 ? 8 : 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFB71C1C),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _selectedStateFilter!,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () => _onStateFilterChanged("Tutti"),
+                    child: const Icon(Icons.close, color: Colors.white, size: 14),
+                  ),
+                ],
+              ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _selectedStateFilter!,
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
-                const SizedBox(width: 4),
-                GestureDetector(
-                  onTap: () => _onStateFilterChanged("Tutti"),
-                  child: const Icon(Icons.close, color: Colors.white, size: 14),
-                ),
-              ],
+          
+          // Filtro stagioni
+          if (hasSeasonFilter)
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: screenWidth < 400 ? 8 : 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.orange[700],
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${_currentMinSeasons.round()}-${_currentMaxSeasons.round()} stagioni',
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _currentMinSeasons = _minSeasons;
+                        _currentMaxSeasons = _maxSeasons;
+                        _applyFilters();
+                      });
+                    },
+                    child: const Icon(Icons.close, color: Colors.white, size: 14),
+                  ),
+                ],
+              ),
             ),
-          ),
+          
           const Spacer(),
           Text(
             '${_filteredSeries.length} risultati',
@@ -259,7 +403,8 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              _searchController.text.isNotEmpty || _selectedStateFilter != "Tutti"
+              _searchController.text.isNotEmpty || _selectedStateFilter != "Tutti" || 
+              _currentMinSeasons != _minSeasons || _currentMaxSeasons != _maxSeasons
                   ? 'Prova a modificare i criteri di ricerca'
                   : 'Aggiungi delle serie per iniziare',
               style: const TextStyle(color: Colors.white54, fontSize: 14),
@@ -346,6 +491,14 @@ class _SearchScreenState extends State<SearchScreen> {
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: screenWidth < 400 ? 12 : 14,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${series.seasons.length} stagioni',
+                    style: TextStyle(
+                      color: Colors.white60,
+                      fontSize: screenWidth < 400 ? 11 : 12,
                     ),
                   ),
                   const SizedBox(height: 6),
