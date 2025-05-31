@@ -27,9 +27,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
   // Filtri per numero di stagioni
   double _minSeasons = 0;
-  double _maxSeasons = 10;
+  double _maxSeasons = 0;
   double _currentMinSeasons = 0;
-  double _currentMaxSeasons = 10;
+  double _currentMaxSeasons = 0;
   bool _showSeasonFilter = false;
 
   @override
@@ -52,7 +52,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _loadSeries() async {
     final dbHelper = DatabaseHelper.instance;
     final series = await dbHelper.getAllSeries();
-    
+
     // Calcola il numero massimo di stagioni
     int maxSeasonsCount = 0;
     for (final s in series) {
@@ -60,11 +60,17 @@ class _SearchScreenState extends State<SearchScreen> {
         maxSeasonsCount = s.seasons.length;
       }
     }
-    
+
     setState(() {
       _allSeries = series;
       _maxSeasons = maxSeasonsCount.toDouble();
-      _currentMaxSeasons = _maxSeasons;
+      // Solo la prima volta o se il filtro è fuori range
+      if (_currentMinSeasons == _minSeasons && (_currentMaxSeasons == 0 || _currentMaxSeasons == 10)) {
+        _currentMaxSeasons = _maxSeasons;
+      }
+      if (_currentMaxSeasons > _maxSeasons) {
+        _currentMaxSeasons = _maxSeasons;
+      }
       _applyFilters();
     });
   }
