@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 import 'main.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -10,30 +11,42 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  late VideoPlayerController _controller;
+
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushNamedAndRemoveUntil(
-        context, 
-        DomflixHomePage.routeName,
-        (route) => false,  // Rimuove tutte le rotte precedenti
-      );
-    });
+    _controller = VideoPlayerController.asset('assets/d.mp4')
+      ..initialize().then((_) {
+        setState(() {});
+        _controller.play();
+        Future.delayed(_controller.value.duration, () {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            DomflixHomePage.routeName,
+            (route) => false,
+          );
+        });
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final logoHeight = screenWidth < 400 ? 80.0 : (screenWidth < 600 ? 120.0 : 160.0);
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: Center(
-        child: Image.asset(
-          'assets/domflix_logo_nobg.png',
-          height: logoHeight,
-        ),
+        child: _controller.value.isInitialized
+            ? AspectRatio(
+                aspectRatio: _controller.value.aspectRatio,
+                child: VideoPlayer(_controller), // <-- Qui viene mostrato il video
+              )
+            : CircularProgressIndicator(),
       ),
     );
   }
