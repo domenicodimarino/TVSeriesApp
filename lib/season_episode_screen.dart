@@ -25,13 +25,13 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
   void initState() {
     super.initState();
     editedSeries = widget.series;
-    // Inizializza i controller per i nomi delle stagioni
+    // Controller per i nomi delle stagioni
     _seasonNameControllers.addAll(
       editedSeries.seasons.map(
         (season) => TextEditingController(text: season.name)
       )
     );
-    // Inizializza i controller per i titoli degli episodi
+    // Controller per i titoli degli episodi
     _episodeTitleControllers.clear();
     for (final season in editedSeries.seasons) {
       _episodeTitleControllers.add([
@@ -43,7 +43,6 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
 
   @override
   void dispose() {
-    // Dispose di tutti i controller
     for (var controller in _seasonNameControllers) {
       controller.dispose();
     }
@@ -271,7 +270,7 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
   }
 
   void _saveChanges() {
-    // Aggiorna lo stato della serie in base al completamento
+    // Aggiornamento dello stato della serie in base al completamento
     final newSeries = editedSeries.copyWith(
       stato: editedSeries.isCompleted ? 'Completata' : editedSeries.stato,
       dateCompleted: editedSeries.isCompleted && editedSeries.dateCompleted == null

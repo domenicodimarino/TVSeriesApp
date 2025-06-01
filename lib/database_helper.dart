@@ -1,6 +1,5 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'dart:convert';
 import 'series.dart';
 import 'initial_series.dart';
 
@@ -11,7 +10,7 @@ class DatabaseHelper {
   static Database? _database;
   Future<Database> get database async => _database ??= await _initDatabase();
 
-  static const int _currentVersion = 1; // Versione unica
+  static const int _currentVersion = 1; // Versione unica del db.
 
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
@@ -69,7 +68,7 @@ class DatabaseHelper {
       )
     ''');
     
-    // Inserisci i dati iniziali
+    // Inseriamo i dati iniziali dell'applicazione al primo avvio
     await _insertInitialData(db);
   }
 
@@ -77,15 +76,13 @@ class DatabaseHelper {
     final now = DateTime.now();
     
     for (final series in initialSeries) {
-      // Add dateAdded to each series if it doesn't already have one
+      // Per le serie iniziali, se non hanno una data di aggiunta, impostiamo la data corrente
       final seriesWithDate = series.dateAdded == null 
           ? series.copyWith(dateAdded: now)
           : series;
           
       await insertSeries(seriesWithDate, db: db);
     }
-
-    print('Database popolato con ${initialSeries.length} serie iniziali');
   }
 
   Future<int> insertSeries(Series series, {Database? db}) async {
@@ -203,7 +200,6 @@ class DatabaseHelper {
   }
 
   Future<Map<String, dynamic>> getMonthlyStats(int year, int month) async {
-    final db = await database;
     final firstDay = DateTime(year, month, 1);
     final lastDay = DateTime(year, month + 1, 0);
     
@@ -270,16 +266,16 @@ class DatabaseHelper {
     ''');
 
     if (favoriteGenres.isEmpty) {
-      // Se non ci sono preferiti, restituisci casuali
+      // Se non ci sono preferiti, restituisci serie casuali
       return getRandomSuggestions(limit: limit);
     }
 
-    // Costruisci condizioni LIKE per ogni genere preferito
+    // Costruisce condizioni LIKE per ogni genere preferito
     final likeClauses = <String>[];
     final args = <dynamic>[];
     for (final g in favoriteGenres) {
       final genre = g['genere'] as String;
-      // Se ci sono più generi separati da virgola, splitta e aggiungi tutti
+      // Se ci sono più generi separati da virgola, splitta e li aggiunge tutti
       for (final singleGenre in genre.split(',')) {
         final trimmed = singleGenre.trim();
         if (trimmed.isNotEmpty) {
@@ -293,7 +289,7 @@ class DatabaseHelper {
       return getRandomSuggestions(limit: limit);
     }
 
-    // Costruisci la query finale
+    // Query finale
     final whereClause = likeClauses.join(' OR ');
     args.add(limit);
 
@@ -311,35 +307,11 @@ class DatabaseHelper {
     return List.generate(maps.length, (i) => Series.fromMap(maps[i]));
   }
 
-  // DEBUG UTILITIES
-  Future<String> getDatabasePath() async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'series_database.db');
-    print('Database path: $path');
-    return path;
-  }
-
-  Future<void> printAllSeries() async {
-    final series = await getAllSeries();
-    print('=== DATABASE CONTENT ===');
-    print('Total series: ${series.length}');
-    for (var s in series) {
-      print(s.toString());
-      for (var season in s.seasons) {
-        print('  Season ${season.seasonNumber}: ${season.name}');
-        for (var episode in season.episodes) {
-          print('    Episode ${episode.episodeNumber}: ${episode.title} - Watched: ${episode.watched}');
-        }
-      }
-    }
-    print('========================');
-  }
-
   // Metodi per gestire generi personalizzati
   Future<List<String>> getCustomGenres() async {
     final db = await database;
     
-    // Controlla se la tabella esiste
+    // Viene controllato se la tabella esiste
     var tables = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='custom_genres'");
     
     if (tables.isEmpty) {
@@ -382,7 +354,7 @@ class DatabaseHelper {
   Future<int> addCustomGenre(String name) async {
     final db = await database;
     
-    // Assicurati che la tabella esista
+    // Controlliamo che la tabella esista
     await db.execute('''
       CREATE TABLE IF NOT EXISTS custom_genres(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -393,14 +365,13 @@ class DatabaseHelper {
     return await db.insert(
       'custom_genres',
       {'name': name},
-      conflictAlgorithm: ConflictAlgorithm.ignore, // Ignora se esiste già
+      conflictAlgorithm: ConflictAlgorithm.ignore,
     );
   }
 
   Future<int> addCustomPlatform(String name) async {
     final db = await database;
     
-    // Assicurati che la tabella esista
     await db.execute('''
       CREATE TABLE IF NOT EXISTS custom_platforms(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -411,7 +382,7 @@ class DatabaseHelper {
     return await db.insert(
       'custom_platforms',
       {'name': name},
-      conflictAlgorithm: ConflictAlgorithm.ignore, // Ignora se esiste già
+      conflictAlgorithm: ConflictAlgorithm.ignore, 
     );
   }
 
@@ -433,11 +404,10 @@ class DatabaseHelper {
   Future<List<int>> getSeriesInCustomCategory(String categoryName, bool isGenre) async {
     final db = await database;
     
-    // Controlla se la tabella esiste
     var tables = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='custom_category_series'");
     
     if (tables.isEmpty) {
-      // Crea la tabella se non esiste
+
       await db.execute('''
         CREATE TABLE IF NOT EXISTS custom_category_series(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -461,7 +431,6 @@ class DatabaseHelper {
   Future<void> updateCustomCategorySeries(String categoryName, bool isGenre, List<int> seriesIds) async {
     final db = await database;
     
-    // Assicurati che la tabella esista
     await db.execute('''
       CREATE TABLE IF NOT EXISTS custom_category_series(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -472,14 +441,12 @@ class DatabaseHelper {
       )
     ''');
     
-    // Rimuovi tutte le serie esistenti per questa categoria
     await db.delete(
       'custom_category_series',
       where: 'category_name = ? AND is_genre = ?',
       whereArgs: [categoryName, isGenre ? 1 : 0],
     );
     
-    // Aggiungi le nuove serie
     for (final seriesId in seriesIds) {
       await db.insert('custom_category_series', {
         'category_name': categoryName,
@@ -492,7 +459,6 @@ class DatabaseHelper {
   Future<void> addSeriesToCustomCategory(String categoryName, bool isGenre, int seriesId) async {
     final db = await database;
     
-    // Assicurati che la tabella esista
     await db.execute('''
       CREATE TABLE IF NOT EXISTS custom_category_series(
         id INTEGER PRIMARY KEY AUTOINCREMENT,

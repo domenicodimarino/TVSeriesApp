@@ -5,8 +5,8 @@ import 'database_helper.dart';
 import 'series.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
-import 'widgets/series_image.dart'; // Aggiungi questo import
-import 'package:image/image.dart' as img; // Assicurati che questo import sia presente
+import 'widgets/series_image.dart';
+import 'package:image/image.dart' as img;
 import 'dart:typed_data';
 import 'season_episode_screen.dart';
 
@@ -48,8 +48,6 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
   Series? _currentEditingSeries;
   bool _isTemporarySeries = false; // Flag per identificare serie temporanee
 
-  // Aggiungi la variabile _isFavorite se non c'è già
-  bool _isFavorite = false; 
 
   @override
   void initState() {
@@ -93,10 +91,6 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
           setState(() {
             _selectedImage = imageFile;
           });
-        } else {
-          print('File immagine locale esistente non trovato: $fullPath');
-          // Potresti voler resettare _useLocalImage o _selectedImage qui
-          // o mostrare un placeholder/errore all'utente.
         }
       }
     } catch (e) {
@@ -109,12 +103,11 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: ImageSource.gallery,
-        // Non impostiamo imageQuality qui, lasciamo che il package 'image' gestisca la conversione
       );
 
 
       if (pickedFile != null) {
-        // Processa l'immagine per convertirla in JPEG e correggere i colori
+        // Processa l'immagine per convertirla in JPEG e correggere i colori del format HEIC
         await _processAndSaveHeicAsJpeg(pickedFile);
       }
     } catch (e) {
@@ -135,17 +128,17 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
       final String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
       final String localJpegPath = path.join(imageDir, fileName);
 
-      // Leggi i byte del file HEIC originale
+      // Vengono letti i byte del file HEIC originale
       final Uint8List heicBytes = await heicFile.readAsBytes();
 
-      // Decodifica l'immagine usando il package image
+      // Viene decodificata l'immagine usando il package image
       img.Image? originalImage = img.decodeImage(heicBytes);
 
       if (originalImage != null) {
-        // Ricodifica l'immagine come JPEG
+        // Si ricodifica l'immagine come JPEG
         final List<int> jpegBytes = img.encodeJpg(originalImage, quality: 90);
 
-        // Salva i byte JPEG nel nuovo file
+        // Si salvano i byte JPEG nel nuovo file
         final File jpegFile = File(localJpegPath);
         await jpegFile.writeAsBytes(jpegBytes);
 
@@ -153,8 +146,7 @@ class _AddEditSeriesScreenState extends State<AddEditSeriesScreen> {
           _selectedImage = jpegFile;
         });
         print('Immagine HEIC convertita e salvata come JPEG: $localJpegPath');
-      } else {
-        // Se la decodifica fallisce, prova una copia diretta come fallback
+      } else {  
         print('Decodifica HEIC fallita. Tentativo di copia diretta.');
         await heicFile.saveTo(localJpegPath);
         setState(() {

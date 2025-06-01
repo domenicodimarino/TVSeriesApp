@@ -5,9 +5,8 @@ import 'series_screen.dart';
 import 'widgets/series_image.dart';
 
 class SearchScreen extends StatefulWidget {
-  final Map<String, String>? initialFilter;
   
-  const SearchScreen({super.key, this.initialFilter});
+  const SearchScreen({super.key,});
 
   static const routeName = '/search';
 
@@ -36,16 +35,9 @@ class _SearchScreenState extends State<SearchScreen> {
   void initState() {
     super.initState();
     
+    // Di base, il filtro per stato è "Tutti"
     _selectedStateFilter = _stateFilters.first;
-    
-    if (widget.initialFilter != null) {
-      if (widget.initialFilter!.containsKey('genre')) {
-        _searchController.text = widget.initialFilter!['genre']!;
-      } else if (widget.initialFilter!.containsKey('platform')) {
-        _searchController.text = widget.initialFilter!['platform']!;
-      }
-    }
-    
+
     _loadSeries();
   }
 
@@ -53,7 +45,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final dbHelper = DatabaseHelper.instance;
     final series = await dbHelper.getAllSeries();
 
-    // Calcola il numero massimo di stagioni
+    // Calcola il numero massimo di stagioni tra tutte le serie presenti nel db.
     int maxSeasonsCount = 0;
     for (final s in series) {
       if (s.seasons.length > maxSeasonsCount) {
@@ -65,7 +57,7 @@ class _SearchScreenState extends State<SearchScreen> {
       _allSeries = series;
       _maxSeasons = maxSeasonsCount.toDouble();
       // Solo la prima volta o se il filtro è fuori range
-      if (_currentMinSeasons == _minSeasons && (_currentMaxSeasons == 0 || _currentMaxSeasons == 10)) {
+      if ((_currentMinSeasons == _minSeasons) && (_currentMaxSeasons == 0)) {
         _currentMaxSeasons = _maxSeasons;
       }
       if (_currentMaxSeasons > _maxSeasons) {
@@ -87,20 +79,20 @@ class _SearchScreenState extends State<SearchScreen> {
     
     List<Series> filtered = _allSeries;
     
-    // Applica filtro per stato
+    // Filtro per stato
     if (_selectedStateFilter != null && _selectedStateFilter != "Tutti") {
       filtered = filtered.where((series) {
         return series.stato == _selectedStateFilter;
       }).toList();
     }
     
-    // Applica filtro per numero di stagioni
+    // Filtro per numero di stagioni
     filtered = filtered.where((series) {
       final seasonCount = series.seasons.length;
       return seasonCount >= _currentMinSeasons && seasonCount <= _currentMaxSeasons;
     }).toList();
     
-    // Applica filtro per ricerca testuale
+    // Filtro per ricerca testuale
     if (searchQuery.isNotEmpty) {
       filtered = filtered.where((series) {
         return series.title.toLowerCase().contains(lowerCaseQuery) ||
@@ -113,7 +105,7 @@ class _SearchScreenState extends State<SearchScreen> {
       _filteredSeries = filtered;
     });
   }
-
+  // Ogni volta che il filtro per stato cambia, aggiorniamo lo stato e applichiamo i filtri.
   void _onStateFilterChanged(String? newState) {
     setState(() {
       _selectedStateFilter = newState;
@@ -121,6 +113,7 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
+  // Pulisce i filtri e la barra di ricerca.
   void _clearSearch() {
     _searchController.clear();
     setState(() {
@@ -131,7 +124,7 @@ class _SearchScreenState extends State<SearchScreen> {
       _applyFilters(query: '');
     });
   }
-
+  // Naviga alla schermata di dettaglio della serie quando si clicca su di essa.
   void _navigateToSeriesDetail(Series series) async {
     final result = await Navigator.pushNamed(
       context,
@@ -378,7 +371,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
           
-          SizedBox(width: screenWidth), // oppure scegli una larghezza fissa o elimina del tutto
+          SizedBox(width: screenWidth),
           Text(
             '${_filteredSeries.length} risultati',
             style: const TextStyle(color: Colors.white70, fontSize: 12),

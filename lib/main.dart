@@ -5,9 +5,9 @@ import 'search_screen.dart';
 import 'add_edit_series_screen.dart';
 import 'database_helper.dart';
 import 'analytics_screen.dart';
-import 'widgets/series_image.dart';
 import 'splash_screen.dart';
-import 'categories.dart';  // Aggiungi questo import
+import 'categories.dart';
+import 'widgets/movie_grid_dynamic.dart';
 
 void main() => runApp(const LetterboxdApp());
 
@@ -23,11 +23,12 @@ class LetterboxdApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF181c23),
         appBarTheme: const AppBarTheme(
           color: Color(0xFFB71C1C),
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
+          elevation: 0, // Rimuove l'ombra dell'app bar
+          surfaceTintColor: Colors.transparent, // serve per mantenere il colore rosso
         ),
       ),
-      initialRoute: SplashScreen.routeName, // Cambia qui
+      // Le route per il navigator dell'app
+      initialRoute: SplashScreen.routeName,
       routes: {
         SplashScreen.routeName: (context) => const SplashScreen(),
         DomflixHomePage.routeName: (context) => const DomflixHomePage(),
@@ -37,6 +38,10 @@ class LetterboxdApp extends StatelessWidget {
         CategoriesScreen.routeName: (context) => const CategoriesScreen(), 
       },
       onGenerateRoute: (settings) {
+        /*
+        Per la navigazione verso la schermata di dettaglio di una serie,
+        utilizziamo onGenerateRoute per passare gli argomenti necessari.
+        */
         if (settings.name == SeriesScreen.routeName) {
           final args = settings.arguments as Map<String, dynamic>;
           return MaterialPageRoute(
@@ -90,7 +95,12 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
     // Usa i metodi del database per suggerimenti intelligenti
     return await DatabaseHelper.instance.getSmartSuggestions(limit: 6);
   }
-
+  /*
+  Funzione per aggiornare la lista delle serie quando viene aggiunta o modificata una serie.
+  Questa funzione viene chiamata dopo che l'utente ha aggiunto o modificato una serie,
+  per ricaricare le serie e aggiornare l'interfaccia utente.
+  In questo modo viene invocato il metodo build
+  */
   void _refreshSeries() {
     setState(() {});
   }
@@ -98,6 +108,9 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      /*
+      L'appbar (header) con il logo.
+      */
       appBar: AppBar(
         backgroundColor: const Color(0xFFB71C1C),
         elevation: 0,
@@ -110,6 +123,7 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
       body: Padding(
         padding: const EdgeInsets.only(top: 8, left: 12, right: 12, bottom: 0),
         child: FutureBuilder<List<List<Series>>>(
+          // vengono caricate le serie in modo asincrono dal db.
           future: Future.wait([
             _loadDatabaseSuggestions(),
             _loadFavoriteSeries(),
@@ -121,7 +135,8 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
-            
+            // i dati pronti vengono estratti dallo snapshot.
+            // e divisi in diverse sezioni.
             final suggestions = snapshot.data?[0] ?? [];
             final favorites = snapshot.data?[1] ?? [];
             final inProgress = snapshot.data?[2] ?? [];
@@ -130,35 +145,39 @@ class _DomflixHomePageState extends State<DomflixHomePage> {
             
             return ListView(
               children: [
-                // Per te section
+                /*
+                Sezione con i suggerimenti personalizzati.
+                Le serie presenti sono suggerite in base ai generi
+                delle serie preferite dell'utente.
+                */
                 const SectionTitle(title: "🔥 Per te"),
                 suggestions.isEmpty
                     ? const EmptySection(message: "Aggiungi qualche serie per vedere i suggerimenti")
                     : MovieGridDynamic(series: suggestions, onSeriesUpdated: _refreshSeries),
                 const SizedBox(height: 24),
                 
-                // Preferiti section
+                // Sezione dei preferiti
                 const SectionTitle(title: "⭐ I tuoi preferiti"),
                 favorites.isEmpty
                     ? const EmptySection(message: "Nessuna serie tra i preferiti")
                     : MovieGridDynamic(series: favorites, onSeriesUpdated: _refreshSeries),
                 const SizedBox(height: 24),
                 
-                // In corso section
+                // Sezioene delle serie in corso
                 const SectionTitle(title: "📺 Le tue serie in corso"),
                 inProgress.isEmpty
                     ? const EmptySection(message: "Nessuna serie in corso")
                     : MovieGridDynamic(series: inProgress, onSeriesUpdated: _refreshSeries),
                 const SizedBox(height: 24),
                 
-                // Da guardare section
+                // Sezione delle serie da guardare
                 const SectionTitle(title: "🎬 Tutte le serie da guardare"),
                 watchLater.isEmpty
                     ? const EmptySection(message: "Nessuna serie da guardare")
                     : MovieGridDynamic(series: watchLater, onSeriesUpdated: _refreshSeries),
                 const SizedBox(height: 24),
                 
-                // Completate section
+                // Sezione delle serie completate
                 const SectionTitle(title: "✅ Serie completate"),
                 completed.isEmpty
                     ? const EmptySection(message: "Nessuna serie completata")
@@ -219,6 +238,7 @@ class EmptySection extends StatelessWidget {
   }
 }
 
+// Il widget per il titolo delle sezioni
 class SectionTitle extends StatelessWidget {
   final String title;
   const SectionTitle({super.key, required this.title});
@@ -236,157 +256,10 @@ class SectionTitle extends StatelessWidget {
         ),
       );
 }
-
-class MovieGrid extends StatelessWidget {
-  final List<Map<String, String>> movies;
-  final VoidCallback onSeriesUpdated;
-
-  const MovieGrid({
-    super.key,
-    required this.movies,
-    required this.onSeriesUpdated,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = screenWidth < 400 ? 90.0 : (screenWidth < 600 ? 110.0 : 130.0);
-
-    return SizedBox(
-      height: cardWidth * 1.5,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: movies.length,
-        itemBuilder: (context, index) {
-          final movie = movies[index];
-          return Container(
-            width: cardWidth,
-            margin: const EdgeInsets.only(right: 12),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(
-                  context,
-                  SeriesScreen.routeName,
-                  arguments: {
-                    'series': Series(
-                      imageUrl: movie["image"]!,
-                      title: movie["title"]!,
-                      trama: "Trama di esempio per ${movie["title"]}",
-                      genere: "Genere di esempio",
-                      stato: "In corso",
-                      piattaforma: "Netflix",
-                      isFavorite: false
-                    ),
-                    'onSeriesUpdated': onSeriesUpdated,
-                  },
-                );
-              },
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        movie["image"]!,
-                        width: cardWidth,
-                        fit: BoxFit.cover,
-                        errorBuilder: (c, e, s) => Container(
-                          width: cardWidth,
-                          color: Colors.grey[800],
-                          child: const Icon(Icons.broken_image, color: Colors.white70),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    movie["title"]!,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: screenWidth < 400 ? 10 : 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class MovieGridDynamic extends StatelessWidget {
-  final List<Series> series;
-  final VoidCallback onSeriesUpdated;
-
-  const MovieGridDynamic({
-    super.key,
-    required this.series,
-    required this.onSeriesUpdated,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final imageWidth = screenWidth < 400 ? 150.0 : (screenWidth < 600 ? 200.0 : 240.0);
-    final imageHeight = screenWidth < 400 ? 220.0 : (screenWidth < 600 ? 300.0 : 360.0);
-
-    return SizedBox(
-      height: imageHeight + 40, // spazio per il titolo
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: series.length,
-        itemBuilder: (context, index) {
-          final s = series[index];
-          return Container(
-            width: imageWidth,
-            margin: const EdgeInsets.only(right: 12),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(
-                  context,
-                  SeriesScreen.routeName,
-                  arguments: {
-                    'series': s,
-                    'onSeriesUpdated': onSeriesUpdated,
-                  },
-                );
-              },
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SeriesImage(
-                    series: s,
-                    width: imageWidth,
-                    height: imageHeight,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    s.title,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: screenWidth < 400 ? 12 : 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
+/*
+Il footer personalizzato con le icone per la navigazione.
+Questo widget contiene le icone per la navigazione tra le schermate principali dell'app.
+*/
 class CustomFooter extends StatelessWidget {
   final VoidCallback onSeriesAdded;
   const CustomFooter({super.key, required this.onSeriesAdded});
@@ -399,12 +272,13 @@ class CustomFooter extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
+          // tasto per andare alla home
           IconButton(
             icon: const Icon(Icons.home, color: Colors.white, size: 30),
             onPressed: () {
-              // Controlla se sei già sulla home per evitare di creare duplicati
+              // Se non siamo già sulla home, andiamo alla home
               if (ModalRoute.of(context)?.settings.name != DomflixHomePage.routeName) {
-                // Rimuovi tutto lo stack e vai alla home
+                // Rimuoviamo tutto lo stack di route
                 Navigator.of(context).pushNamedAndRemoveUntil(
                   DomflixHomePage.routeName,
                   (route) => false, // Rimuove tutte le routes esistenti
@@ -412,25 +286,25 @@ class CustomFooter extends StatelessWidget {
               }
             },
           ),
-          
+          // tasto per andare alla schermata di ricerca
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white, size: 30),
-            onPressed: () async {  // Aggiungi async qui
+            onPressed: () async { 
               if (ModalRoute.of(context)?.settings.name != SearchScreen.routeName) {
-                // Se non sei già sulla schermata di ricerca, vai lì
-                final result = await Navigator.pushNamed(  // Aggiungi await qui
+                // Se non siamo già nella schermata di ricerca, andiamo lì
+                final result = await Navigator.pushNamed( 
                   context,
                   SearchScreen.routeName,
                 );
                 
-                // Aggiorna la home quando torni dalla ricerca con modifiche
+                // Si aggiorna la home quando si toran dalla ricerca con modifiche
                 if (result == true) {
                   onSeriesAdded();
                 }
               }
             },
           ),
-          
+          // tasto per andare alla schermata per aggiungere una nuova serie
           IconButton(
             icon: const Icon(Icons.add, color: Colors.white, size: 30),
             onPressed: () async {
@@ -443,34 +317,35 @@ class CustomFooter extends StatelessWidget {
               }
             },
           ),
-          
+          // tasto per andare alla schermata delle categorie
           IconButton(
             icon: const Icon(Icons.category, color: Colors.white, size: 30),
-            onPressed: () async {  // Aggiungi async qui
+            onPressed: () async { 
+              // Se non siamo già nella schermata delle categorie, andiamo lì
               if (ModalRoute.of(context)?.settings.name != CategoriesScreen.routeName) {
-                final result = await Navigator.pushNamed(  // Aggiungi await qui
+                final result = await Navigator.pushNamed(
                   context,
                   CategoriesScreen.routeName,
                 );
                 
-                // Aggiorna la home quando torni dalle categorie con modifiche
+                // Si aggiorna la home quando si torna dalle categorie con modifiche
                 if (result == true) {
                   onSeriesAdded();
                 }
               }
             },
           ),
-          
+          // tasto per andare alla schermata di analytics
           IconButton(
             icon: const Icon(Icons.analytics, color: Colors.white, size: 30),
-            onPressed: () async {  // Aggiungi async qui
+            onPressed: () async { 
               if (ModalRoute.of(context)?.settings.name != AnalyticsScreen.routeName) {
-                final result = await Navigator.pushNamed(  // Aggiungi await qui
+                final result = await Navigator.pushNamed(
                   context,
                   AnalyticsScreen.routeName,
                 );
                 
-                // Aggiorna la home quando torni da analytics con modifiche
+                // Si aggiorna la home quando si torna da analytics con modifiche
                 if (result == true) {
                   onSeriesAdded();
                 }

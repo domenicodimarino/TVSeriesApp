@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'database_helper.dart';
 import 'series.dart';
-import 'series_screen.dart';
-import 'widgets/series_image.dart';
+import 'widgets/movie_grid_dynamic.dart';
 
 const Map<String, String> genreEmojis = {
   'drammatico': '🎭',
@@ -38,7 +37,7 @@ class CategoriesScreen extends StatefulWidget {
 class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = true;
-  bool _hasChanges = false; // Aggiungi questa variabile
+  bool _hasChanges = false;
   
   // Categorie e serie
   Map<String, List<Series>> _genreSeriesMap = {};
@@ -70,7 +69,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
       final dbHelper = DatabaseHelper.instance;
       final allSeries = await dbHelper.getAllSeries();
       
-      // Crea mappe per generi e piattaforme
+      // Creazione mappe per generi e piattaforme
       final genreSeriesMap = <String, List<Series>>{};
       final platformSeriesMap = <String, List<Series>>{};
       
@@ -91,7 +90,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
         }
       }
       
-      // Carica categorie personalizzate
+      // Caricamento categorie personalizzate
       List<String> customGenres = [];
       List<String> customPlatforms = [];
       Map<String, List<Series>> customGenreSeriesMap = {};
@@ -101,7 +100,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
         customGenres = await dbHelper.getCustomGenres();
         customPlatforms = await dbHelper.getCustomPlatforms();
         
-        // Carica le serie per ogni categoria personalizzata
+        // Caricamento le serie per ogni categoria personalizzata
         for (final genre in customGenres) {
           final seriesIds = await dbHelper.getSeriesInCustomCategory(genre, true);
           final categorySeries = allSeries.where((s) => seriesIds.contains(s.id)).toList();
@@ -506,79 +505,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> with SingleTickerPr
       }
       _loadCategories();
     }
-  }
-}
-
-// Widget riutilizzato dal main.dart (identico)
-class MovieGridDynamic extends StatelessWidget {
-  final List<Series> series;
-  final VoidCallback onSeriesUpdated;
-
-  const MovieGridDynamic({
-    super.key,
-    required this.series,
-    required this.onSeriesUpdated,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final imageWidth = screenWidth < 400 ? 150.0 : (screenWidth < 600 ? 200.0 : 240.0);
-    final imageHeight = screenWidth < 400 ? 220.0 : (screenWidth < 600 ? 300.0 : 360.0);
-
-    return SizedBox(
-      height: imageHeight + 40,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: series.length,
-        itemBuilder: (context, index) {
-          final s = series[index];
-          return Container(
-            width: imageWidth,
-            margin: const EdgeInsets.only(right: 12),
-            child: GestureDetector(
-              onTap: () async {
-                final result = await Navigator.pushNamed(
-                  context,
-                  SeriesScreen.routeName,
-                  arguments: {
-                    'series': s,
-                    'onSeriesUpdated': onSeriesUpdated,
-                  },
-                );
-                
-                // Aggiorna i dati quando torni dalla schermata della serie
-                if (result == true) {
-                  onSeriesUpdated();
-                }
-              },
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SeriesImage(
-                    series: s,
-                    width: imageWidth,
-                    height: imageHeight,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    s.title,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: screenWidth < 400 ? 12 : 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
   }
 }
 
