@@ -16,7 +16,17 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.asset('assets/d.mp4')
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final orientation = MediaQuery.of(context).orientation;
+    final videoAsset = orientation == Orientation.portrait
+        ? 'assets/d.mp4'
+        : 'assets/d-landscape.mp4';
+
+    _controller = VideoPlayerController.asset(videoAsset)
       ..initialize().then((_) {
         setState(() {});
         _controller.play();
