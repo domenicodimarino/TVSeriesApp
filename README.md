@@ -1,4 +1,5 @@
 # DOMFlix 📺
+![Logo DOMFlix](assets/domflix.gif)
 
 DOMFlix è un'app Flutter per la gestione delle serie TV che permette di:
 
