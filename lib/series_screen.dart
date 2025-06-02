@@ -134,7 +134,6 @@ class _SeriesScreenState extends State<SeriesScreen> {
 
   Future<void> _toggleEpisodeWatchStatus(int seasonIndex, int episodeIndex) async {
     final season = currentSeries.seasons[seasonIndex];
-    final episode = season.episodes[episodeIndex];
     
     final updatedEpisodes = season.episodes.mapIndexed((i, e) {
       return i == episodeIndex

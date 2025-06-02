@@ -12,7 +12,7 @@ import 'widgets/movie_grid_dynamic.dart';
 void main() => runApp(const LetterboxdApp());
 
 class LetterboxdApp extends StatelessWidget {
-  const LetterboxdApp({Key? key}) : super(key: key);
+  const LetterboxdApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +58,7 @@ class LetterboxdApp extends StatelessWidget {
 }
 
 class DomflixHomePage extends StatefulWidget {
-  const DomflixHomePage({Key? key}) : super(key: key);
+  const DomflixHomePage({super.key});
 
   static const routeName = '/';
 
