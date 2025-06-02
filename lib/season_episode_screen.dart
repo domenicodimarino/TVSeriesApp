@@ -7,10 +7,10 @@ class SeasonEpisodeScreen extends StatefulWidget {
   final Function(Series) onSave;
 
   const SeasonEpisodeScreen({
-    Key? key,
+    super.key,
     required this.series,
     required this.onSave,
-  }) : super(key: key);
+  });
 
   @override
   _SeasonEpisodeScreenState createState() => _SeasonEpisodeScreenState();
@@ -501,7 +501,7 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
                                     style: TextStyle(fontSize: episodeSubtitleFontSize),
                                   ),
                                 );
-                              }).toList(),
+                              }),
                             ],
                           ),
                         ),
@@ -521,7 +521,7 @@ class _SeasonEpisodeScreenState extends State<SeasonEpisodeScreen> {
 class EpisodeCountDialog extends StatefulWidget {
   final Function(int) onConfirm;
 
-  const EpisodeCountDialog({Key? key, required this.onConfirm}) : super(key: key);
+  const EpisodeCountDialog({super.key, required this.onConfirm});
 
   @override
   _EpisodeCountDialogState createState() => _EpisodeCountDialogState();

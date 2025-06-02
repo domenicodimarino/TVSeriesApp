@@ -16,6 +16,7 @@ dependencies:
   fl_chart: ^1.0.0
   image: ^4.1.3 
   charts_flutter_new: ^0.12.0
+  video_player: ^2.8.2
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
