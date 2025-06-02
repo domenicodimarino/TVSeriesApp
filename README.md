@@ -18,6 +18,7 @@ DOMFlix è un'app Flutter per la gestione delle serie TV che permette di:
 - **lib/**: codice principale dell'app (schermate, modelli, database, widget personalizzati)
 - **assets/**: immagini e risorse grafiche dell'app
 - **android/**, **ios/**, **linux/**, **macos/**, **windows/**, **web/**: cartelle di piattaforma per il supporto multipiattaforma Flutter
+- **documentazione/**: la cartella dove è presente la relazione di progetto e le slide di presentazione.
 
 ---
 
